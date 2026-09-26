@@ -1,6 +1,9 @@
 // Victory summary: animated stat rows, coin reward breakdown, unlock notice
 // and NEXT LEVEL / UPGRADE / MENU buttons.
 
+import { itemIconDataURL } from '../art/Sprites.js';
+import { ITEM_TYPES } from '../data/items.js';
+
 const fmt = (n) => Math.floor(n).toLocaleString('en-US');
 
 export function countUp(el, to, ms = 700) {
@@ -43,7 +46,11 @@ export class VictoryScreen {
       { label: 'Bonus', value: s.bonus, count: true },
       { label: 'Max Combo', value: s.maxCombo, count: true },
     ]);
-    let html = `<div class="coins"><i class="coin-ico"></i>+${fmt(s.coins)}</div>
+    if (!this.itemIcon) this.itemIcon = itemIconDataURL('crit', ITEM_TYPES.crit.color);
+    let html = `<div class="reward-tiles">
+        <div class="tile"><span class="coin-stack"><i class="coin-ico"></i><i class="coin-ico"></i><i class="coin-ico"></i></span><b>+${fmt(s.coins)}</b><small>COINS</small></div>
+        <div class="tile"><img alt="" src="${this.itemIcon}"><b>+${fmt(s.bonus)}</b><small>BONUS SCORE</small></div>
+      </div>
       <div class="detail">Collected ${s.collected} · Clear reward ${s.clearCoins} · Combo bonus ${s.comboCoins}</div>`;
     if (s.perfectWaves || s.noDamageWaves) html += `<div class="detail">Perfect waves ${s.perfectWaves} · No-damage waves ${s.noDamageWaves}</div>`;
     if (s.unlocked) html += `<div class="unlock">★ SECTOR ${s.unlocked.id} UNLOCKED: ${s.unlocked.name} ★</div>`;

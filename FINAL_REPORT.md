@@ -27,6 +27,29 @@ Chết:  GAME OVER → RETRY → chơi lại
 - **Game feel:** hit spark, số damage, CRIT, nháy trắng, nổ nhiều lớp, screen shake nhẹ (có thể tắt), flash, slow-motion khi boss chết, rung trên Android, SFX và nhạc procedural (nhạc riêng cho menu, battle, boss).
 - **Save:** lưu bằng localStorage, có schema version, migration, và fallback khi storage lỗi hoặc dữ liệu hỏng.
 
+## 1b. Nâng cấp đồ hoạ (visual upgrade)
+
+Chỉ thay đổi lớp hiển thị. Gameplay, data, hitbox, điều khiển, save, tiến trình level và test đều giữ nguyên.
+
+- **Tàu người chơi:** thân trắng bóng, viền chrome, đèn đầu cánh phát sáng. Có 3 ngoại hình theo cấp vũ khí. Lửa động cơ 2 lớp, khiên dạng lưới lục giác.
+- **Quái:** 6 loại vẽ lại với ánh sáng có hướng, highlight bóng, mắt to biểu cảm, chi tiết neon, halo màu, 3 frame animation cho loài có cánh hoặc xúc tu.
+- **Boss:** thân chi tiết được cache theo phase, cộng lớp chuyển động (cánh, chân, xúc tu neon, mắt, đèn). Vẽ nhanh hơn khoảng 40 lần so với bản cũ.
+- **Đạn:** tia plasma có vệt đuôi cho người chơi; đạn địch dạng vòng neon có viền tối, dễ nhìn trên mọi nền.
+- **Hiệu ứng:** thêm particle flare, cầu lửa và khói; vụ nổ nhiều lớp, crit có sao lấp lánh, sóng xung kích 2 lớp.
+- **Nền:** nebula có dải mây và vùng bụi tối, thiên hà xoắn, hành tinh có bóng đổ, vành sáng, vành đai và mặt trăng; thêm sao lấp lánh và thiên thạch mờ.
+- **Power-up và coin:** viên ngọc có vành chrome, icon có viền, chùm sáng xoay và tia lấp lánh bay quanh; coin có cạnh dày và độ bóng.
+- **UI:**
+  - HUD: khung kính có viền neon, icon tim và khiên, thanh HP/boss bóng với mốc phase hình kim cương, combo phát sáng, banner có viền neon.
+  - Menu: logo chữ gradient 3D, nút bóng.
+  - Victory: 3 ngôi sao và ô phần thưởng.
+  - Upgrade: thanh tiến trình chia đoạn.
+  - Nút NOVA có icon ngôi sao.
+- **Hiệu năng:** đo trong headless Chromium vẽ bằng phần mềm (không GPU), với random cố định để các lần chạy so sánh được.
+  - Boss nhanh hơn khoảng 40 lần.
+  - Tổng thời gian render trung bình tăng khoảng 9% so với bản gốc, một số cảnh nhanh hơn.
+  - Trên điện thoại (canvas chạy bằng GPU) chi phí nhỏ hơn nhiều. Hệ thống tự giảm chất lượng khi FPS thấp vẫn hoạt động.
+  - Chưa đo trên máy thật.
+
 ## 2. Tech stack
 
 HTML5 Canvas 2D, JavaScript thuần (ES modules), DOM/CSS cho UI, WebAudio, localStorage. **Không có runtime dependency.**

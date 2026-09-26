@@ -110,7 +110,6 @@ export class BulletSystem {
 
   renderPlayer(ctx) {
     const a = this.player.active;
-    ctx.globalCompositeOperation = 'lighter';
     for (let i = 0; i < a.length; i++) {
       const b = a[i];
       const s = b.sprite;
@@ -124,7 +123,6 @@ export class BulletSystem {
         ctx.restore();
       }
     }
-    ctx.globalCompositeOperation = 'source-over';
   }
 
   renderEnemy(ctx) {

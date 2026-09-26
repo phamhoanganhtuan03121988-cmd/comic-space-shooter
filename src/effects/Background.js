@@ -1,5 +1,5 @@
 import { THEMES } from '../data/levels.js';
-import { makeCanvas, hexA, shade, glowSprite, flareSprite } from '../art/Sprites.js';
+import { makeCanvas, hexA, shade, flareSprite } from '../art/Sprites.js';
 import { rand, TAU } from '../core/math.js';
 
 // Parallax space background (all heavy work pre-rendered once per theme):
@@ -380,13 +380,10 @@ export class Background {
     // bright glowing stars with cross flares
     ctx.globalCompositeOperation = 'lighter';
     const fl = flareSprite(this.theme.star);
-    const gl = glowSprite(this.theme.nebula[0], 16);
     for (let i = 0; i < this.bright.length; i++) {
       const s = this.bright[i];
       const k = 0.55 + 0.45 * Math.sin(s.tw);
-      ctx.globalAlpha = 0.35 * k;
-      ctx.drawImage(gl.canvas, s.x - s.s, s.y - s.s, s.s * 2, s.s * 2);
-      ctx.globalAlpha = 0.8 * k;
+      ctx.globalAlpha = 0.85 * k;
       const f = s.s * (0.8 + k * 0.4);
       ctx.drawImage(fl.canvas, s.x - f / 2, s.y - f / 2, f, f);
     }

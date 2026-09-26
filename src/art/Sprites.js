@@ -177,29 +177,29 @@ const PLAYER_BULLET_COLORS = {
 export function playerBulletSprite(kind) {
   return cached('pb:' + kind, () => {
     const [light, deep] = PLAYER_BULLET_COLORS[kind] || PLAYER_BULLET_COLORS.normal;
-    return makeSprite(18, 44, (ctx) => {
+    return makeSprite(14, 38, (ctx) => {
       // trail
-      const tg = ctx.createLinearGradient(0, -8, 0, 22);
+      const tg = ctx.createLinearGradient(0, -8, 0, 19);
       tg.addColorStop(0, hexA(deep, 0.7));
       tg.addColorStop(1, hexA(deep, 0));
       ctx.fillStyle = tg;
       ctx.beginPath();
-      ctx.moveTo(-5, -4);
-      ctx.lineTo(0, 22);
-      ctx.lineTo(5, -4);
+      ctx.moveTo(-4.5, -4);
+      ctx.lineTo(0, 19);
+      ctx.lineTo(4.5, -4);
       ctx.closePath();
       ctx.fill();
       // halo
-      const hg = ctx.createRadialGradient(0, -9, 1, 0, -8, 9);
+      const hg = ctx.createRadialGradient(0, -9, 1, 0, -8, 7);
       hg.addColorStop(0, hexA(light, 0.9));
       hg.addColorStop(1, hexA(deep, 0));
       ctx.fillStyle = hg;
-      ellipse(ctx, 0, -8, 8.5, 13);
+      ellipse(ctx, 0, -8, 7, 11);
       ctx.fill();
       // body
       ctx.fillStyle = light;
       ctx.beginPath();
-      ctx.moveTo(0, -20);
+      ctx.moveTo(0, -18.5);
       ctx.quadraticCurveTo(4, -12, 3.6, 2);
       ctx.quadraticCurveTo(0, 6, -3.6, 2);
       ctx.quadraticCurveTo(-4, -12, 0, -20);
@@ -207,7 +207,7 @@ export function playerBulletSprite(kind) {
       // hot core
       ctx.fillStyle = '#ffffff';
       ctx.beginPath();
-      ctx.moveTo(0, -17);
+      ctx.moveTo(0, -16);
       ctx.quadraticCurveTo(2, -11, 1.8, -1);
       ctx.quadraticCurveTo(0, 1.5, -1.8, -1);
       ctx.quadraticCurveTo(-2, -11, 0, -17);

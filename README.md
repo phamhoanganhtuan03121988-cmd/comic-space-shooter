@@ -202,7 +202,12 @@ Muốn có background mới thì thêm một theme vào `THEMES` (màu gradient,
 
 1. Thêm vào `src/data/bosses.js`: `name`, `title`, `art`, `color`, `hp`, `score`, `coins`, `holdY`, `size`, `hit` (các vòng tròn hitbox), `contactDamage`, `phases`.
 2. Mỗi phase gồm `{ at: 0.5, label, move: { type: 'sway'|'figure8'|'drift'|'track', ... }, rest, passive?, attacks: [...] }`. Attack dùng các type có sẵn: `fan`, `aimed`, `ring`, `spiral`, `rain`, `wall`, `laser`, `charge`, `summon`, `nova`.
-3. Vẽ art trong `src/art/BossArt.js`: hàm `(ctx, b)` dùng `b.t`, `b.charge`, `b.lookX/lookY`, `b.rage`, `b.phaseIndex` để tạo animation.
+3. Vẽ art trong `src/art/BossArt.js`, thêm một entry vào `BOSS_ART` gồm:
+   - `box: [w, h]`: kích thước khung sprite.
+   - `halo`: màu glow bao quanh.
+   - `base(ctx, phase)`: thân tĩnh chi tiết. Chỉ vẽ **một lần** rồi cache, nên có thể vẽ nhiều chi tiết.
+   - `back(ctx, b)` / `front(ctx, b)` (tuỳ chọn): phần chuyển động vẽ mỗi frame, như cánh, chân, xúc tu, mắt, đèn. Dùng `b.t`, `b.charge`, `b.lookX/lookY`, `b.rage`, `b.phaseIndex`.
+   - Tuỳ chọn: `phased: true` (thân đổi theo phase), `squash: true` (nhún nhảy), `oy` (lệch tâm).
 4. Gán `boss: 'id'` cho level.
 
 Muốn thêm kiểu attack mới: viết thêm runner trong `src/boss/BossPatterns.js`, gồm `start`, `update`, và tuỳ chọn `telegraph`, `render`.
@@ -223,6 +228,20 @@ Muốn thêm kiểu attack mới: viết thêm runner trong `src/boss/BossPatter
 - `src/data/bosses.js`: HP, attack, telegraph, thời gian nghỉ `rest` giữa các đòn.
 - `src/data/items.js`: `weight` (tỉ lệ rơi) và `duration`.
 - `src/weapons/WeaponSystem.js`: bố cục luồng đạn theo power.
+
+## Art style & rendering pipeline
+
+Phong cách **neon arcade cartoon**: viền đậm, gradient có hướng sáng, highlight bóng loáng, glow màu. Cách giữ 60 FPS:
+
+- Mọi sprite được vẽ **một lần** vào canvas cache (`src/art/Sprites.js` → `makeSprite`, `cached`). Glow được "nướng" sẵn bằng `shadowBlur` ngay lúc tạo cache, không bao giờ tính mỗi frame.
+- **Enemy** (`EnemyArt.js`): 2–3 frame animation mỗi loại, có halo màu bao quanh silhouette. Bản trắng dùng cho hit flash cũng được cache.
+- **Boss** (`BossArt.js`):
+  - Thân tĩnh được cache theo phase, kèm lớp `back`/`front` chuyển động.
+  - Neon vẽ mỗi frame dùng nét cộng sáng (`glowPath`, `glowDot`) thay vì `shadowBlur`.
+  - Hit flash dùng silhouette trắng đã cache.
+- **Hiệu ứng** (`ParticleSystem`, `Explosion.js`): particle dạng sprite (`glow`, `flare`, `fire`, `smoke`) cộng với `spark`/`ring`/`debris`, số lượng có giới hạn và tự giảm khi FPS thấp.
+- **Nền** (`Background.js`): gradient + vignette tĩnh, lớp nebula/wisp/thiên hà cuộn liền mạch, hành tinh có bóng đổ và vành sáng, sao lấp lánh, thiên thạch mờ (chỉ để trang trí, không va chạm).
+- **HUD** (`HUD.js`): khung tĩnh cache đúng tỉ lệ màn hình; gradient của các thanh được cache.
 
 ## Replacing placeholder art/audio
 
