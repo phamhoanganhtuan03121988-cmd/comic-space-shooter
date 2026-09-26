@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+    <meta name="theme-color" content="#0b0620" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="description" content="Cosmic Farm Defenders — an original arcade vertical space shooter for mobile browsers." />
+    <title>Cosmic Farm Defenders</title>
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="icon" href="icon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div id="app">
+      <div id="stage">
+        <canvas id="game-canvas" aria-label="Game playfield"></canvas>
+
+        <!-- in-game controls -->
+        <div id="controls" class="hidden">
+          <button id="btn-pause" class="ctrl-btn" aria-label="Pause"><span class="pause-ico"></span></button>
+          <button id="btn-skill" class="skill-btn" aria-label="NOVA special skill">
+            <span class="skill-fill"></span>
+            <span class="skill-label">NOVA</span>
+            <span class="skill-cd"></span>
+          </button>
+        </div>
+
+        <div id="screens">
+          <!-- MAIN MENU -->
+          <section class="screen" id="screen-menu">
+            <div class="menu-top">
+              <div class="logo">
+                <span class="logo-small">COSMIC</span>
+                <span class="logo-big">FARM</span>
+                <span class="logo-big2">DEFENDERS</span>
+              </div>
+              <div class="chips">
+                <div class="chip"><i class="coin-ico"></i><span data-bind="coins">0</span></div>
+                <div class="chip">BEST <b data-bind="best">0</b></div>
+              </div>
+            </div>
+            <div class="menu-buttons">
+              <button class="btn btn-primary btn-big" data-action="play">PLAY</button>
+              <button class="btn" data-action="upgrade">UPGRADE</button>
+              <button class="btn" data-action="howto">HOW TO PLAY</button>
+              <button class="btn" data-action="settings">SETTINGS</button>
+            </div>
+            <div class="menu-foot">v1.0 · an original arcade shooter</div>
+          </section>
+
+          <!-- LEVEL SELECT -->
+          <section class="screen" id="screen-levels">
+            <header class="screen-head">
+              <button class="btn btn-small btn-back" data-action="back">‹ BACK</button>
+              <h2>SELECT SECTOR</h2>
+            </header>
+            <div class="scroll" id="level-list"></div>
+          </section>
+
+          <!-- UPGRADES -->
+          <section class="screen" id="screen-upgrade">
+            <header class="screen-head">
+              <button class="btn btn-small btn-back" data-action="back">‹ BACK</button>
+              <h2>UPGRADES</h2>
+              <div class="chip"><i class="coin-ico"></i><span data-bind="coins">0</span></div>
+            </header>
+            <div class="scroll" id="upgrade-list"></div>
+          </section>
+
+          <!-- SETTINGS -->
+          <section class="screen" id="screen-settings">
+            <header class="screen-head">
+              <button class="btn btn-small btn-back" data-action="back">‹ BACK</button>
+              <h2>SETTINGS</h2>
+            </header>
+            <div class="scroll panel-list">
+              <div class="row"><span>Sound effects</span><button class="toggle" data-setting="sound">ON</button></div>
+              <div class="row"><span>Music</span><button class="toggle" data-setting="music">ON</button></div>
+              <div class="row"><span>Screen shake</span><button class="toggle" data-setting="shake">ON</button></div>
+              <div class="row"><span>Vibration</span><button class="toggle" data-setting="vibration">ON</button></div>
+              <div class="row"><span>Debug mode</span><button class="toggle" data-setting="debug">OFF</button></div>
+              <div class="row"><span>Reset all progress</span><button class="btn btn-small btn-danger" data-action="reset">RESET</button></div>
+              <p class="note" id="save-note"></p>
+            </div>
+          </section>
+
+          <!-- HOW TO PLAY -->
+          <section class="screen" id="screen-howto">
+            <header class="screen-head">
+              <button class="btn btn-small btn-back" data-action="back">‹ BACK</button>
+              <h2>HOW TO PLAY</h2>
+            </header>
+            <div class="scroll howto">
+              <h3>Controls</h3>
+              <ul>
+                <li><b>Drag anywhere</b> on the screen — your ship copies the movement, so your finger never hides it.</li>
+                <li>Your ship <b>fires automatically</b>.</li>
+                <li>Tap <b>NOVA</b> (bottom right) to blast every enemy and erase bullets. It recharges.</li>
+                <li>Only the <b>glowing core</b> in the middle of your ship can be hit.</li>
+                <li>Desktop: WASD / Arrows to move, Space = NOVA, P / Esc = pause.</li>
+              </ul>
+              <h3>Power-ups</h3>
+              <div id="howto-items" class="icon-grid"></div>
+              <h3>Critters</h3>
+              <div id="howto-enemies" class="icon-grid"></div>
+              <h3>Combo &amp; score</h3>
+              <ul>
+                <li>Chain kills quickly: 5 = x2, 10 = x3, 20 = x4, 30 = x5 score. Getting hit resets it.</li>
+                <li>Kill every enemy of a wave for a <b>PERFECT WAVE</b> bonus; take no damage for a <b>NO DAMAGE</b> bonus.</li>
+                <li>Spend coins on permanent upgrades between sectors.</li>
+              </ul>
+            </div>
+          </section>
+
+          <!-- PAUSE -->
+          <section class="screen screen-modal" id="screen-pause">
+            <div class="card">
+              <h2 class="title">PAUSED</h2>
+              <button class="btn btn-primary btn-big" data-action="resume">RESUME</button>
+              <button class="btn" data-action="restart">RESTART</button>
+              <div class="toggle-row">
+                <button class="toggle" data-setting="sound">SOUND ON</button>
+                <button class="toggle" data-setting="music">MUSIC ON</button>
+              </div>
+              <button class="btn btn-ghost" data-action="menu">EXIT TO MENU</button>
+            </div>
+          </section>
+
+          <!-- VICTORY -->
+          <section class="screen screen-modal" id="screen-victory">
+            <div class="card">
+              <h2 class="title title-win" id="victory-title">VICTORY!</h2>
+              <div class="subtitle" id="victory-sub"></div>
+              <div class="stats" id="victory-stats"></div>
+              <div class="reward" id="victory-reward"></div>
+              <button class="btn btn-primary btn-big" data-action="next" id="btn-next">NEXT LEVEL</button>
+              <div class="btn-row">
+                <button class="btn" data-action="upgrade">UPGRADE</button>
+                <button class="btn btn-ghost" data-action="menu">MENU</button>
+              </div>
+            </div>
+          </section>
+
+          <!-- GAME OVER -->
+          <section class="screen screen-modal" id="screen-gameover">
+            <div class="card">
+              <h2 class="title title-lose">GAME OVER</h2>
+              <div class="subtitle" id="gameover-sub"></div>
+              <div class="stats" id="gameover-stats"></div>
+              <button class="btn btn-primary btn-big" data-action="retry">RETRY</button>
+              <div class="btn-row">
+                <button class="btn" data-action="upgrade">UPGRADE</button>
+                <button class="btn btn-ghost" data-action="menu">MAIN MENU</button>
+              </div>
+            </div>
+          </section>
+
+          <!-- CONFIRM -->
+          <section class="screen screen-modal" id="screen-confirm">
+            <div class="card">
+              <h2 class="title">RESET PROGRESS?</h2>
+              <p class="subtitle">Coins, upgrades, unlocked sectors and best score will be erased.</p>
+              <button class="btn btn-danger" data-action="confirm-reset">YES, RESET</button>
+              <button class="btn btn-ghost" data-action="back">CANCEL</button>
+            </div>
+          </section>
+        </div>
+
+        <div id="debug-panel" class="hidden">
+          <button data-dbg="wave">SKIP WAVE</button>
+          <button data-dbg="boss">BOSS</button>
+          <button data-dbg="win">WIN</button>
+          <button data-dbg="coins">+1000¢</button>
+          <button data-dbg="hp">REFILL</button>
+          <button data-dbg="power">MAX PWR</button>
+          <button data-dbg="god">GOD: OFF</button>
+          <button data-dbg="hitbox">BOXES: ON</button>
+          <button data-dbg="unlock">UNLOCK ALL</button>
+        </div>
+
+        <div id="toast" class="toast"></div>
+      </div>
+    </div>
+    <noscript><p class="noscript">Cosmic Farm Defenders needs JavaScript enabled.</p></noscript>
+    <script type="module" src="src/main.js"></script>
+  </body>
+</html>

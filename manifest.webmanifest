@@ -1,0 +1,10 @@
+{
+  "name": "Cosmic Farm Defenders",
+  "short_name": "Farm Defenders",
+  "start_url": "./index.html",
+  "display": "fullscreen",
+  "orientation": "portrait",
+  "background_color": "#0b0620",
+  "theme_color": "#0b0620",
+  "icons": [{ "src": "icon.svg", "sizes": "any", "type": "image/svg+xml" }]
+}

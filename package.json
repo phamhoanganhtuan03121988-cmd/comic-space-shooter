@@ -1,0 +1,19 @@
+{
+  "name": "cosmic-farm-defenders",
+  "version": "1.0.0",
+  "description": "Original mobile-first vertical space shooter built with HTML5 Canvas and vanilla JavaScript.",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node tools/serve.mjs",
+    "build": "node tools/build.mjs",
+    "test": "node --test tests/unit/*.test.mjs",
+    "test:e2e": "node tests/e2e/run.mjs",
+    "test:all": "npm test && npm run test:e2e"
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "esbuild": "^0.28.2",
+    "playwright": "^1.56.1"
+  }
+}
