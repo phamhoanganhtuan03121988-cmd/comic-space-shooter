@@ -1,14 +1,15 @@
 import { Pool } from '../core/Pool.js';
-import { glowSprite } from '../art/Sprites.js';
+import { glowSprite, flareSprite, fireSprite, smokeSprite } from '../art/Sprites.js';
 import { rand, TAU } from '../core/math.js';
 
 // Lightweight pooled particles. Kinds:
 //   glow   additive soft dot (sprite)        spark  additive streak along velocity
 //   ring   expanding stroked circle          debris rotating chunk (normal blend)
-//   smoke  growing translucent puff
+//   smoke  growing translucent puff          flare  4-point lens star (additive)
+//   fire   expanding fireball core (additive)
 // `quality` (0.35..1) scales spawn counts when the frame rate drops.
 
-const KIND = { glow: 0, spark: 1, ring: 2, debris: 3, smoke: 4 };
+const KIND = { glow: 0, spark: 1, ring: 2, debris: 3, smoke: 4, flare: 5, fire: 6 };
 
 function makeParticle() {
   return {
@@ -49,9 +50,9 @@ export class ParticleSystem {
     p.life = life;
     p.maxLife = life;
     p.size = size;
-    p.endSize = opts && opts.endSize !== undefined ? opts.endSize : kind === 'ring' || kind === 'smoke' ? size * 3 : 0;
+    p.endSize = opts && opts.endSize !== undefined ? opts.endSize : kind === 'ring' || kind === 'smoke' || kind === 'fire' ? size * 3 : 0;
     p.color = color;
-    p.sprite = p.kind === 0 ? glowSprite(color, 16) : null;
+    p.sprite = p.kind === 0 ? glowSprite(color, 16) : p.kind === 5 ? flareSprite(color) : p.kind === 6 ? fireSprite(color) : p.kind === 4 ? smokeSprite() : null;
     p.drag = opts && opts.drag !== undefined ? opts.drag : 2;
     p.gravity = opts && opts.gravity ? opts.gravity : 0;
     p.rot = rand(0, TAU);
@@ -105,12 +106,9 @@ export class ParticleSystem {
         ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size * 0.7);
         ctx.restore();
       } else {
-        const s = p.size + (p.endSize - p.size) * (1 - k);
-        ctx.globalAlpha = k * 0.35;
-        ctx.fillStyle = p.color;
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, s, 0, TAU);
-        ctx.fill();
+        const s = (p.size + (p.endSize - p.size) * (1 - k)) * 2;
+        ctx.globalAlpha = k;
+        ctx.drawImage(p.sprite.canvas, p.x - s / 2, p.y - s / 2, s, s);
       }
     }
     // pass 2: additive (glow, spark, ring)
@@ -131,6 +129,18 @@ export class ParticleSystem {
         ctx.moveTo(p.x, p.y);
         ctx.lineTo(p.x - p.vx * len, p.y - p.vy * len);
         ctx.stroke();
+      } else if (p.kind === 5) {
+        const s = (p.endSize + (p.size - p.endSize) * k) * 2;
+        ctx.globalAlpha = Math.min(1, k * 1.6);
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        ctx.rotate(p.rot * 0.15);
+        ctx.drawImage(p.sprite.canvas, -s / 2, -s / 2, s, s);
+        ctx.restore();
+      } else if (p.kind === 6) {
+        const s = (p.size + (p.endSize - p.size) * (1 - k * k)) * 2;
+        ctx.globalAlpha = k;
+        ctx.drawImage(p.sprite.canvas, p.x - s / 2, p.y - s / 2, s, s);
       } else if (p.kind === 2) {
         const s = p.size + (p.endSize - p.size) * (1 - k);
         ctx.globalAlpha = k;

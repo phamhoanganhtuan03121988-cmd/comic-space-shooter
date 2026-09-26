@@ -1,8 +1,8 @@
 import { Pool } from '../core/Pool.js';
 import { CONFIG } from '../data/config.js';
 import { ITEM_TYPES, ITEM_IDS } from '../data/items.js';
-import { itemSprite, coinSprite, COIN_FRAMES } from '../art/Sprites.js';
-import { rand, weightedPick, TAU } from '../core/math.js';
+import { itemSprite, coinSprite, COIN_FRAMES, raysSprite, flareSprite } from '../art/Sprites.js';
+import { rand, weightedPick } from '../core/math.js';
 
 // Pickups: coins and power-up capsules. Handles drop rolls, falling / bobbing,
 // magnet attraction, pickup detection and applying item effects.
@@ -179,30 +179,29 @@ export class ItemManager {
       const it = a[i];
       if (it.coin) {
         const s = coinSprite(Math.floor(it.t * 12) % COIN_FRAMES);
-        ctx.drawImage(s.canvas, it.x - 9, it.y - 9, 18, 18);
+        ctx.drawImage(s.canvas, it.x - 10, it.y - 10, 20, 20);
       } else {
         const s = itemSprite(it.id, it.def.color);
         const bob = Math.sin(it.t * 4) * 2;
         const pulse = 1 + Math.sin(it.t * 7) * 0.06;
-        const size = 38 * pulse;
-        // rotating light rays so capsules are impossible to miss
+        const size = 42 * pulse;
+        const y = it.y + bob;
+        // rotating light burst + orbiting sparkle so capsules are impossible to miss
+        const rays = raysSprite(it.def.color);
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.globalAlpha = 0.55;
         ctx.save();
-        ctx.translate(it.x, it.y + bob);
-        ctx.rotate(it.t * 1.5);
-        ctx.globalAlpha = 0.35;
-        ctx.fillStyle = it.def.color;
-        for (let k = 0; k < 4; k++) {
-          ctx.rotate(TAU / 4);
-          ctx.beginPath();
-          ctx.moveTo(0, 0);
-          ctx.lineTo(-5, -30);
-          ctx.lineTo(5, -30);
-          ctx.closePath();
-          ctx.fill();
-        }
+        ctx.translate(it.x, y);
+        ctx.rotate(it.t * 1.2);
+        ctx.drawImage(rays.canvas, -36 * pulse, -36 * pulse, 72 * pulse, 72 * pulse);
         ctx.restore();
+        const fl = flareSprite(it.def.color);
+        const oa = it.t * 3;
+        ctx.globalAlpha = 0.9;
+        ctx.drawImage(fl.canvas, it.x + Math.cos(oa) * 17 - 7, y + Math.sin(oa) * 17 - 7, 14, 14);
         ctx.globalAlpha = 1;
-        ctx.drawImage(s.canvas, it.x - size / 2, it.y + bob - size / 2, size, size);
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.drawImage(s.canvas, it.x - size / 2, y - size / 2, size, size);
       }
     }
   }

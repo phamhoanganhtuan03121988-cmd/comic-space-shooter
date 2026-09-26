@@ -78,6 +78,77 @@ export function glowSprite(color, radius = 16) {
   );
 }
 
+// 4-point lens flare star (additive): used for impacts and explosion flashes.
+export function flareSprite(color) {
+  return cached('flare:' + color, () =>
+    makeSprite(64, 64, (ctx) => {
+      const g = ctx.createRadialGradient(0, 0, 0, 0, 0, 14);
+      g.addColorStop(0, 'rgba(255,255,255,1)');
+      g.addColorStop(0.4, hexA(color, 0.7));
+      g.addColorStop(1, hexA(color, 0));
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.arc(0, 0, 14, 0, TAU);
+      ctx.fill();
+      for (const [len, wid, a] of [
+        [32, 3.2, 0],
+        [20, 2.2, Math.PI / 4],
+      ]) {
+        for (let i = 0; i < 4; i++) {
+          ctx.save();
+          ctx.rotate(a + (i * Math.PI) / 2);
+          const rg = ctx.createLinearGradient(0, 0, 0, -len);
+          rg.addColorStop(0, 'rgba(255,255,255,0.95)');
+          rg.addColorStop(0.3, hexA(color, 0.7));
+          rg.addColorStop(1, hexA(color, 0));
+          ctx.fillStyle = rg;
+          ctx.beginPath();
+          ctx.moveTo(-wid, 0);
+          ctx.lineTo(0, -len);
+          ctx.lineTo(wid, 0);
+          ctx.closePath();
+          ctx.fill();
+          ctx.restore();
+        }
+      }
+    })
+  );
+}
+
+// Fireball core (additive): white-hot centre fading through the tint colour.
+export function fireSprite(color) {
+  return cached('fire:' + color, () =>
+    makeSprite(48, 48, (ctx) => {
+      const g = ctx.createRadialGradient(0, 0, 0, 0, 0, 24);
+      g.addColorStop(0, 'rgba(255,255,255,1)');
+      g.addColorStop(0.2, 'rgba(255,245,190,0.95)');
+      g.addColorStop(0.45, hexA(color, 0.8));
+      g.addColorStop(0.75, hexA(shade(color, -0.25), 0.35));
+      g.addColorStop(1, hexA(color, 0));
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.arc(0, 0, 24, 0, TAU);
+      ctx.fill();
+    })
+  );
+}
+
+// Soft smoke puff (normal blend).
+export function smokeSprite() {
+  return cached('smoke', () =>
+    makeSprite(40, 40, (ctx) => {
+      const g = ctx.createRadialGradient(-3, -3, 2, 0, 0, 20);
+      g.addColorStop(0, 'rgba(120,100,160,0.55)');
+      g.addColorStop(0.6, 'rgba(60,45,95,0.35)');
+      g.addColorStop(1, 'rgba(40,30,70,0)');
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.arc(0, 0, 20, 0, TAU);
+      ctx.fill();
+    })
+  );
+}
+
 export function hexA(hex, a) {
   const h = hex.replace('#', '');
   const n = parseInt(h.length === 3 ? h.split('').map((c) => c + c).join('') : h, 16);
@@ -243,29 +314,49 @@ export function enemyBulletSprite(kind, color) {
 export const COIN_FRAMES = 8;
 export function coinSprite(frame) {
   return cached('coin:' + frame, () =>
-    makeSprite(20, 20, (ctx) => {
-      const sx = Math.max(0.15, Math.abs(Math.cos((frame / COIN_FRAMES) * Math.PI)));
-      ctx.scale(sx, 1);
-      ctx.fillStyle = '#b36b00';
+    makeSprite(22, 22, (ctx) => {
+      const sx = Math.max(0.12, Math.abs(Math.cos((frame / COIN_FRAMES) * Math.PI)));
+      // soft golden glow
+      const h = ctx.createRadialGradient(0, 0, 4, 0, 0, 11);
+      h.addColorStop(0, 'rgba(255,210,63,0.45)');
+      h.addColorStop(1, 'rgba(255,210,63,0)');
+      ctx.fillStyle = h;
       ctx.beginPath();
-      ctx.arc(0, 0.8, 8, 0, TAU);
+      ctx.arc(0, 0, 11, 0, TAU);
       ctx.fill();
-      const g = ctx.createLinearGradient(0, -8, 0, 8);
-      g.addColorStop(0, '#fff3a0');
-      g.addColorStop(0.5, '#ffc933');
-      g.addColorStop(1, '#ff9d00');
+      ctx.scale(sx, 1);
+      // edge (thickness shows when the coin turns)
+      ctx.fillStyle = '#a35a00';
+      ctx.beginPath();
+      ctx.arc(0.8 / sx, 0.8, 8, 0, TAU);
+      ctx.fill();
+      const g = ctx.createLinearGradient(-6, -8, 6, 8);
+      g.addColorStop(0, '#fff7c2');
+      g.addColorStop(0.45, '#ffcf33');
+      g.addColorStop(1, '#e08600');
       ctx.fillStyle = g;
       ctx.beginPath();
-      ctx.arc(0, 0, 7.5, 0, TAU);
+      ctx.arc(0, 0, 7.8, 0, TAU);
       ctx.fill();
-      ctx.strokeStyle = '#8a4b00';
-      ctx.lineWidth = 1.2;
+      ctx.strokeStyle = '#7a3f00';
+      ctx.lineWidth = 1.3;
+      ctx.stroke();
+      ctx.strokeStyle = 'rgba(255,250,210,0.9)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.arc(0, 0, 5.8, 0, TAU);
       ctx.stroke();
       if (sx > 0.4) {
-        ctx.fillStyle = '#fff8cf';
-        star(ctx, 0, 0, 4, 1.8, 5);
+        ctx.fillStyle = '#b86a00';
+        star(ctx, 0.5, 0.6, 3.8, 1.7, 5);
+        ctx.fill();
+        ctx.fillStyle = '#fff8d6';
+        star(ctx, 0, 0, 3.8, 1.7, 5);
         ctx.fill();
       }
+      ctx.fillStyle = 'rgba(255,255,255,0.85)';
+      ellipse(ctx, -3, -4, 2.2, 1.1, -0.6);
+      ctx.fill();
     })
   );
 }
@@ -366,43 +457,85 @@ export function drawGlyph(ctx, id) {
   }
 }
 
+// Power-up capsule: glowing halo, chrome bezel ring, glossy coloured gem
+// and a bold outlined icon. Glow is baked with shadowBlur at cache time.
 export function itemSprite(id, color) {
   return cached('item:' + id, () =>
-    makeSprite(40, 40, (ctx) => {
-      const glow = ctx.createRadialGradient(0, 0, 8, 0, 0, 20);
-      glow.addColorStop(0, hexA(color, 0.6));
+    makeSprite(44, 44, (ctx) => {
+      const glow = ctx.createRadialGradient(0, 0, 9, 0, 0, 22);
+      glow.addColorStop(0, hexA(color, 0.75));
       glow.addColorStop(1, hexA(color, 0));
       ctx.fillStyle = glow;
       ctx.beginPath();
-      ctx.arc(0, 0, 20, 0, TAU);
+      ctx.arc(0, 0, 22, 0, TAU);
       ctx.fill();
-      // capsule body
-      const g = ctx.createRadialGradient(-4, -5, 2, 0, 0, 14);
-      g.addColorStop(0, shade(color, 0.35));
-      g.addColorStop(0.7, color);
-      g.addColorStop(1, shade(color, -0.25));
+      // chrome bezel
+      const bz = ctx.createLinearGradient(-14, -14, 14, 14);
+      bz.addColorStop(0, '#ffffff');
+      bz.addColorStop(0.45, '#aeb6de');
+      bz.addColorStop(1, '#4b5390');
+      ctx.fillStyle = bz;
+      ctx.strokeStyle = '#150f2c';
+      ctx.lineWidth = 1.8;
+      ctx.beginPath();
+      ctx.arc(0, 0, 14.5, 0, TAU);
+      ctx.fill();
+      ctx.stroke();
+      // gem
+      const g = ctx.createRadialGradient(-4, -5, 1, 0, 0, 12);
+      g.addColorStop(0, shade(color, 0.45));
+      g.addColorStop(0.55, color);
+      g.addColorStop(1, shade(color, -0.35));
       ctx.fillStyle = g;
-      ctx.strokeStyle = '#1b1033';
-      ctx.lineWidth = 2;
       ctx.beginPath();
-      ctx.arc(0, 0, 13, 0, TAU);
+      ctx.arc(0, 0, 11.5, 0, TAU);
       ctx.fill();
+      ctx.strokeStyle = shade(color, -0.45);
+      ctx.lineWidth = 1;
       ctx.stroke();
-      ctx.strokeStyle = 'rgba(255,255,255,0.85)';
-      ctx.lineWidth = 1.5;
-      ctx.beginPath();
-      ctx.arc(0, 0, 10.5, 0, TAU);
-      ctx.stroke();
+      // icon: dark outline pass then white
+      ctx.save();
+      ctx.scale(0.88, 0.88);
+      ctx.fillStyle = shade(color, -0.55);
+      ctx.strokeStyle = shade(color, -0.55);
+      ctx.translate(0.6, 1);
+      drawGlyph(ctx, id);
+      ctx.translate(-0.6, -1);
+      ctx.shadowColor = '#ffffff';
+      ctx.shadowBlur = 6;
       ctx.fillStyle = '#ffffff';
       ctx.strokeStyle = '#ffffff';
-      ctx.save();
-      ctx.scale(0.9, 0.9);
       drawGlyph(ctx, id);
       ctx.restore();
-      ctx.fillStyle = 'rgba(255,255,255,0.55)';
+      // glass highlight
+      ctx.fillStyle = 'rgba(255,255,255,0.6)';
       ctx.beginPath();
-      ctx.ellipse(-5, -7, 4, 2.2, -0.5, 0, TAU);
+      ctx.ellipse(-4.5, -6.5, 5, 2.4, -0.5, 0, TAU);
       ctx.fill();
+    })
+  );
+}
+
+// Soft rotating light burst drawn behind power-ups (additive).
+export function raysSprite(color) {
+  return cached('rays:' + color, () =>
+    makeSprite(80, 80, (ctx) => {
+      for (let i = 0; i < 8; i++) {
+        ctx.save();
+        ctx.rotate((i / 8) * TAU);
+        const len = i % 2 ? 26 : 38;
+        const g = ctx.createLinearGradient(0, 0, 0, -len);
+        g.addColorStop(0, hexA(color, 0.8));
+        g.addColorStop(1, hexA(color, 0));
+        ctx.fillStyle = g;
+        ctx.beginPath();
+        ctx.moveTo(-4.5, 0);
+        ctx.lineTo(0, -len);
+        ctx.lineTo(4.5, 0);
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+      }
     })
   );
 }

@@ -1,4 +1,4 @@
-import { BOSS_ART } from '../art/BossArt.js';
+import { BOSS_ART, bossBase, bossBaseWhite } from '../art/BossArt.js';
 import { PATTERNS } from './BossPatterns.js';
 import { clamp, easeOutCubic, rand, DEG } from '../core/math.js';
 
@@ -222,7 +222,7 @@ export class Boss {
     this.hp -= amount;
     if (this.flashCd <= 0) {
       this.flash = 0.05;
-      this.flashCd = 0.09;
+      this.flashCd = 0.16;
     }
     if (this.hp <= 0) {
       this.hp = 0;
@@ -292,20 +292,30 @@ export class Boss {
         runner.render(this, this.attack, this.st, g, ctx, k);
       }
     }
-    const art = BOSS_ART[this.def.art];
+    const key = this.def.art;
+    const art = BOSS_ART[key];
     ctx.save();
     ctx.translate(this.x, this.y);
     ctx.lineJoin = 'round';
     ctx.lineCap = 'round';
-    art(ctx, this);
-    if (this.flash > 0 || this.state === BOSS_STATE.TRANSITION) {
-      // hit flash: redraw additively for a bright pop
+    if (art.back) art.back(ctx, this);
+    // cached detailed body (squash-and-stretch for the slime king)
+    const base = bossBase(key, this.phaseIndex);
+    const wob = art.squash ? Math.sin(this.t * 3) * 0.035 : 0;
+    const w = base.w * (1 + wob);
+    const h = base.h * (1 - wob);
+    const top = (-base.h / 2 + base.oy) * (1 - wob);
+    ctx.drawImage(base.canvas, -w / 2, top, w, h);
+    const transition = this.state === BOSS_STATE.TRANSITION;
+    if (this.flash > 0 || transition) {
+      // hit / phase flash: additive white silhouette
       ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = this.state === BOSS_STATE.TRANSITION ? 0.25 + 0.25 * Math.sin(this.t * 30) : 0.55;
-      art(ctx, this);
+      ctx.globalAlpha = transition ? 0.2 + 0.2 * Math.sin(this.t * 30) : 0.3;
+      ctx.drawImage(bossBaseWhite(key, this.phaseIndex).canvas, -w / 2, top, w, h);
       ctx.globalAlpha = 1;
       ctx.globalCompositeOperation = 'source-over';
     }
+    if (art.front) art.front(ctx, this);
     ctx.restore();
   }
 
