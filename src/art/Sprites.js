@@ -96,116 +96,144 @@ export function shade(hex, amt) {
 
 // ---------------------------------------------------------------- bullets
 
+const PLAYER_BULLET_COLORS = {
+  normal: ['#5ef3ff', '#2b8cff'],
+  rapid: ['#ffe066', '#ff8a1f'],
+  multi: ['#ff9af0', '#b44dff'],
+};
+
+// Plasma bolt: tapered glowing trail + hot white core with a pointed tip.
 export function playerBulletSprite(kind) {
   return cached('pb:' + kind, () => {
-    const col = kind === 'multi' ? '#d68bff' : kind === 'rapid' ? '#ffe066' : '#5ef3ff';
-    return makeSprite(14, 34, (ctx) => {
-      const g = ctx.createLinearGradient(0, -17, 0, 17);
-      g.addColorStop(0, hexA(col, 0.95));
-      g.addColorStop(1, hexA(col, 0));
-      ctx.fillStyle = g;
-      roundRect(ctx, -6, -15, 12, 30, 6);
+    const [light, deep] = PLAYER_BULLET_COLORS[kind] || PLAYER_BULLET_COLORS.normal;
+    return makeSprite(18, 44, (ctx) => {
+      // trail
+      const tg = ctx.createLinearGradient(0, -8, 0, 22);
+      tg.addColorStop(0, hexA(deep, 0.7));
+      tg.addColorStop(1, hexA(deep, 0));
+      ctx.fillStyle = tg;
+      ctx.beginPath();
+      ctx.moveTo(-5, -4);
+      ctx.lineTo(0, 22);
+      ctx.lineTo(5, -4);
+      ctx.closePath();
       ctx.fill();
+      // halo
+      const hg = ctx.createRadialGradient(0, -9, 1, 0, -8, 9);
+      hg.addColorStop(0, hexA(light, 0.9));
+      hg.addColorStop(1, hexA(deep, 0));
+      ctx.fillStyle = hg;
+      ellipse(ctx, 0, -8, 8.5, 13);
+      ctx.fill();
+      // body
+      ctx.fillStyle = light;
+      ctx.beginPath();
+      ctx.moveTo(0, -20);
+      ctx.quadraticCurveTo(4, -12, 3.6, 2);
+      ctx.quadraticCurveTo(0, 6, -3.6, 2);
+      ctx.quadraticCurveTo(-4, -12, 0, -20);
+      ctx.fill();
+      // hot core
       ctx.fillStyle = '#ffffff';
-      roundRect(ctx, -2.6, -13, 5.2, 18, 2.6);
+      ctx.beginPath();
+      ctx.moveTo(0, -17);
+      ctx.quadraticCurveTo(2, -11, 1.8, -1);
+      ctx.quadraticCurveTo(0, 1.5, -1.8, -1);
+      ctx.quadraticCurveTo(-2, -11, 0, -17);
       ctx.fill();
     });
   });
+}
+
+// Enemy shots: neon ring + white-hot core + a dark outline so they read on
+// any background (enemy bullets must always be the most legible thing).
+function enemyOrb(ctx, color, r) {
+  const halo = ctx.createRadialGradient(0, 0, r * 0.6, 0, 0, r * 1.75);
+  halo.addColorStop(0, hexA(color, 0.55));
+  halo.addColorStop(1, hexA(color, 0));
+  ctx.fillStyle = halo;
+  ctx.beginPath();
+  ctx.arc(0, 0, r * 1.75, 0, TAU);
+  ctx.fill();
+  ctx.fillStyle = '#1a0716';
+  ctx.beginPath();
+  ctx.arc(0, 0, r + 1.3, 0, TAU);
+  ctx.fill();
+  const g = ctx.createRadialGradient(0, 0, 0, 0, 0, r);
+  g.addColorStop(0, '#ffffff');
+  g.addColorStop(0.42, '#ffffff');
+  g.addColorStop(0.6, shade(color, 0.25));
+  g.addColorStop(1, color);
+  ctx.fillStyle = g;
+  ctx.beginPath();
+  ctx.arc(0, 0, r, 0, TAU);
+  ctx.fill();
+  ctx.strokeStyle = shade(color, 0.4);
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.arc(0, 0, r * 0.75, 0, TAU);
+  ctx.stroke();
 }
 
 export function enemyBulletSprite(kind, color) {
   return cached('eb:' + kind + color, () => {
     switch (kind) {
       case 'needle':
-        return makeSprite(12, 26, (ctx) => {
-          ctx.fillStyle = hexA(color, 0.35);
-          ellipse(ctx, 0, 0, 6, 13);
+        return makeSprite(16, 32, (ctx) => {
+          const halo = ctx.createRadialGradient(0, 0, 2, 0, 0, 14);
+          halo.addColorStop(0, hexA(color, 0.6));
+          halo.addColorStop(1, hexA(color, 0));
+          ctx.fillStyle = halo;
+          ellipse(ctx, 0, 0, 8, 15);
+          ctx.fill();
+          ctx.fillStyle = '#1a0716';
+          ellipse(ctx, 0, 0, 5, 12);
           ctx.fill();
           ctx.fillStyle = color;
-          ctx.strokeStyle = '#2a0a1e';
-          ctx.lineWidth = 1.4;
-          ellipse(ctx, 0, 0, 3.8, 10);
+          ellipse(ctx, 0, 0, 3.8, 10.5);
           ctx.fill();
-          ctx.stroke();
           ctx.fillStyle = '#fff';
-          ellipse(ctx, 0, 1, 1.6, 6);
+          ellipse(ctx, 0, 1.5, 1.7, 7);
           ctx.fill();
         });
       case 'petal':
-        return makeSprite(20, 20, (ctx) => {
-          ctx.fillStyle = hexA(color, 0.3);
+        return makeSprite(24, 24, (ctx) => {
+          const halo = ctx.createRadialGradient(0, 0, 3, 0, 0, 12);
+          halo.addColorStop(0, hexA(color, 0.55));
+          halo.addColorStop(1, hexA(color, 0));
+          ctx.fillStyle = halo;
           ctx.beginPath();
-          ctx.arc(0, 0, 10, 0, TAU);
+          ctx.arc(0, 0, 12, 0, TAU);
+          ctx.fill();
+          const petal = (sc) => {
+            ctx.beginPath();
+            ctx.moveTo(0, -8 * sc);
+            ctx.quadraticCurveTo(7 * sc, 0, 0, 8 * sc);
+            ctx.quadraticCurveTo(-7 * sc, 0, 0, -8 * sc);
+          };
+          ctx.fillStyle = '#1a0716';
+          petal(1.2);
           ctx.fill();
           ctx.fillStyle = color;
-          ctx.strokeStyle = '#2a0a1e';
-          ctx.lineWidth = 1.4;
-          ctx.beginPath();
-          ctx.moveTo(0, -7.5);
-          ctx.quadraticCurveTo(6.5, 0, 0, 7.5);
-          ctx.quadraticCurveTo(-6.5, 0, 0, -7.5);
+          petal(1);
           ctx.fill();
-          ctx.stroke();
           ctx.fillStyle = '#fff';
-          ctx.beginPath();
-          ctx.arc(0, 0, 2.2, 0, TAU);
+          petal(0.45);
           ctx.fill();
         });
       case 'blob':
-        return makeSprite(22, 22, (ctx) => {
-          ctx.fillStyle = hexA(color, 0.3);
-          ctx.beginPath();
-          ctx.arc(0, 0, 11, 0, TAU);
-          ctx.fill();
-          ctx.fillStyle = color;
-          ctx.strokeStyle = '#0d2a0d';
-          ctx.lineWidth = 1.6;
-          ctx.beginPath();
-          ctx.arc(0, 0, 7, 0, TAU);
-          ctx.fill();
-          ctx.stroke();
+        return makeSprite(26, 26, (ctx) => {
+          enemyOrb(ctx, color, 7);
           ctx.fillStyle = 'rgba(255,255,255,0.9)';
           ctx.beginPath();
-          ctx.arc(-2.2, -2.2, 2.4, 0, TAU);
+          ctx.arc(-2.4, -2.4, 1.8, 0, TAU);
           ctx.fill();
         });
       case 'big':
-        return makeSprite(30, 30, (ctx) => {
-          ctx.fillStyle = hexA(color, 0.3);
-          ctx.beginPath();
-          ctx.arc(0, 0, 15, 0, TAU);
-          ctx.fill();
-          ctx.fillStyle = color;
-          ctx.strokeStyle = '#2a0a1e';
-          ctx.lineWidth = 1.8;
-          ctx.beginPath();
-          ctx.arc(0, 0, 10, 0, TAU);
-          ctx.fill();
-          ctx.stroke();
-          ctx.fillStyle = '#fff';
-          ctx.beginPath();
-          ctx.arc(0, 0, 5, 0, TAU);
-          ctx.fill();
-        });
+        return makeSprite(36, 36, (ctx) => enemyOrb(ctx, color, 10.5));
       case 'orb':
       default:
-        return makeSprite(20, 20, (ctx) => {
-          ctx.fillStyle = hexA(color, 0.32);
-          ctx.beginPath();
-          ctx.arc(0, 0, 10, 0, TAU);
-          ctx.fill();
-          ctx.fillStyle = color;
-          ctx.strokeStyle = '#2a0a1e';
-          ctx.lineWidth = 1.4;
-          ctx.beginPath();
-          ctx.arc(0, 0, 6.5, 0, TAU);
-          ctx.fill();
-          ctx.stroke();
-          ctx.fillStyle = '#fff';
-          ctx.beginPath();
-          ctx.arc(0, 0, 3, 0, TAU);
-          ctx.fill();
-        });
+        return makeSprite(24, 24, (ctx) => enemyOrb(ctx, color, 6.5));
     }
   });
 }

@@ -1,4 +1,4 @@
-import { enemySprite, enemyWhite } from '../art/EnemyArt.js';
+import { enemySprite, enemyWhite, ENEMY_FRAMES } from '../art/EnemyArt.js';
 import { glowSprite } from '../art/Sprites.js';
 
 // A single pooled enemy. Movement modes:
@@ -52,14 +52,16 @@ export function makeEnemy() {
   };
 }
 
-const ANIMATED = { zipfly: 16, swirlie: 5, spitter: 4, rockshell: 3, spikeling: 6 };
+// Animation speed (frames per second) for critters with motion frames;
+// others only blink (frame 1) now and then.
+const ANIMATED = { zipfly: 18, swirlie: 6, spitter: 4, rockshell: 3, spikeling: 9 };
 
 export function renderEnemy(ctx, e) {
   const type = e.type;
   const art = type.art;
   const rate = ANIMATED[art];
   let frame = 0;
-  if (rate) frame = Math.floor(e.age * rate + e.phase) % 2;
+  if (rate) frame = Math.floor(e.age * rate + e.phase) % ENEMY_FRAMES[art];
   else if ((e.age + e.phase) % 3.1 < 0.14) frame = 1; // blink
   const s = e.flash > 0 ? enemyWhite(art, type.radius, frame) : enemySprite(art, type.radius, frame);
 

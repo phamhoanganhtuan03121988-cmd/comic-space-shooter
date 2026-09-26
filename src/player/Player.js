@@ -1,7 +1,7 @@
 import { CONFIG } from '../data/config.js';
 import { BUFF_IDS } from '../data/items.js';
 import { clamp } from '../core/math.js';
-import { shipSprite, shipWhite, flameSprite, shieldBubbleSprite } from '../art/ShipArt.js';
+import { shipSprite, shipWhite, shipTier, flameSprite, flameCoreSprite, shieldBubbleSprite } from '../art/ShipArt.js';
 import { glowSprite } from '../art/Sprites.js';
 import { computeStats } from './PlayerStats.js';
 
@@ -122,21 +122,27 @@ export class Player {
     // blink while invulnerable
     if (this.invuln > 0 && this.hitFlash <= 0 && Math.floor(this.t * 20) % 2 === 0) return;
 
-    // engine flames (flicker)
+    // engine flames: outer cone + white-hot core, flickering independently
     const fl = flameSprite();
-    const flick = 0.8 + Math.random() * 0.4 + Math.max(0, -this.vx / 1500);
+    const core = flameCoreSprite();
+    const boost = Math.max(0, -this.vx / 1500);
+    const f1 = 0.8 + Math.random() * 0.4 + boost;
+    const f2 = 0.8 + Math.random() * 0.4 + boost;
     ctx.globalCompositeOperation = 'lighter';
-    ctx.drawImage(fl.canvas, x - 14, y + 24, 10, 22 * flick);
-    ctx.drawImage(fl.canvas, x + 4, y + 24, 10, 22 * flick);
-    const glow = glowSprite('#ff9b3d', 16);
-    ctx.globalAlpha = 0.6;
-    ctx.drawImage(glow.canvas, x - 22, y + 18, 44, 30);
+    ctx.drawImage(fl.canvas, x - 16, y + 24, 14, 26 * f1);
+    ctx.drawImage(fl.canvas, x + 2, y + 24, 14, 26 * f2);
+    ctx.drawImage(core.canvas, x - 12, y + 24, 6, 15 * f1);
+    ctx.drawImage(core.canvas, x + 6, y + 24, 6, 15 * f2);
+    const glow = glowSprite('#ff7a3d', 16);
+    ctx.globalAlpha = 0.55;
+    ctx.drawImage(glow.canvas, x - 24, y + 16, 48, 34);
     ctx.globalAlpha = 1;
     ctx.globalCompositeOperation = 'source-over';
-    if (fx && Math.random() < 0.5) fx.engineTrail(x + (Math.random() < 0.5 ? -9 : 9), y + 36);
+    if (fx && Math.random() < 0.5) fx.engineTrail(x + (Math.random() < 0.5 ? -9 : 9), y + 38);
 
-    // ship with banking (horizontal squash) + slight rotation
-    const s = this.hitFlash > 0 ? shipWhite() : shipSprite();
+    // ship with banking (horizontal squash) + slight rotation; look follows weapon power
+    const tier = shipTier(this.power);
+    const s = this.hitFlash > 0 ? shipWhite(tier) : shipSprite(tier);
     ctx.save();
     ctx.translate(x, y);
     ctx.rotate(this.tilt * 0.12);
@@ -144,12 +150,15 @@ export class Player {
     ctx.drawImage(s.canvas, -s.w / 2, -s.h / 2, s.w, s.h);
     ctx.restore();
 
-    // muzzle flash
+    // muzzle flashes at the nose and wingtip cannons
     if (this.muzzle > 0) {
       const m = glowSprite('#9ff9ff', 16);
       ctx.globalCompositeOperation = 'lighter';
       ctx.globalAlpha = this.muzzle / 0.06;
-      ctx.drawImage(m.canvas, x - 12, y - 38, 24, 24);
+      ctx.drawImage(m.canvas, x - 13, y - 44, 26, 26);
+      ctx.globalAlpha *= 0.7;
+      ctx.drawImage(m.canvas, x - 34, y - 12, 16, 16);
+      ctx.drawImage(m.canvas, x + 18, y - 12, 16, 16);
       ctx.globalAlpha = 1;
       ctx.globalCompositeOperation = 'source-over';
     }
@@ -170,10 +179,10 @@ export class Player {
     }
 
     // hitbox core so players know exactly what can be hit
-    const core = glowSprite('#ffffff', 16);
+    const hit = glowSprite('#ffffff', 16);
     ctx.globalCompositeOperation = 'lighter';
     ctx.globalAlpha = 0.8;
-    ctx.drawImage(core.canvas, x - 6, y - 6, 12, 12);
+    ctx.drawImage(hit.canvas, x - 6, y - 6, 12, 12);
     ctx.globalAlpha = 1;
     ctx.globalCompositeOperation = 'source-over';
   }

@@ -713,10 +713,10 @@ export class Game {
     const fl = flameSprite();
     ctx.globalCompositeOperation = 'lighter';
     const f = 0.85 + Math.random() * 0.3;
-    ctx.drawImage(fl.canvas, x - 14, y + 24, 10, 24 * f);
-    ctx.drawImage(fl.canvas, x + 4, y + 24, 10, 24 * f);
+    ctx.drawImage(fl.canvas, x - 16, y + 24, 14, 28 * f);
+    ctx.drawImage(fl.canvas, x + 2, y + 24, 14, 28 * f);
     ctx.globalCompositeOperation = 'source-over';
-    const sp = shipSprite();
+    const sp = shipSprite(3);
     ctx.save();
     ctx.translate(x, y);
     ctx.rotate(Math.cos(t * 0.8) * 0.08);
