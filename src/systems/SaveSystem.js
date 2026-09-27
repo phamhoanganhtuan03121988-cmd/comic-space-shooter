@@ -56,6 +56,27 @@ function mergeDefaults(def, data) {
   return out;
 }
 
+// Records a sector clear and unlocks the next one (capped at the campaign
+// size). Returns true when a new sector was unlocked.
+export function recordClear(data, levelId, totalLevels) {
+  const was = data.unlockedLevel;
+  data.unlockedLevel = Math.min(totalLevels, Math.max(data.unlockedLevel, levelId + 1));
+  if (!data.clearedLevels.includes(levelId)) data.clearedLevels.push(levelId);
+  return data.unlockedLevel > was;
+}
+
+// Keeps unlock progress consistent with the campaign size. Saves made when
+// the campaign had 5 sectors capped unlockedLevel at 5 even after clearing
+// sector 5; now that more sectors exist, the next one opens automatically.
+// Never lowers progress except to clamp into the valid range.
+export function repairProgress(data, totalLevels) {
+  const cleared = data.clearedLevels.filter((n) => Number.isInteger(n) && n >= 1 && n <= totalLevels);
+  data.clearedLevels = cleared;
+  const next = cleared.length ? Math.max(...cleared) + 1 : 1;
+  data.unlockedLevel = Math.max(1, Math.min(totalLevels, Math.max(data.unlockedLevel, next)));
+  return data;
+}
+
 export class SaveSystem {
   constructor(storage = typeof localStorage !== 'undefined' ? localStorage : null) {
     this.storage = storage;

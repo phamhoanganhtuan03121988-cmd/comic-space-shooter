@@ -1,5 +1,6 @@
 import { BOSS_ART, bossBase, bossBaseWhite } from '../art/BossArt.js';
 import { PATTERNS } from './BossPatterns.js';
+import { glowSprite } from '../art/Sprites.js';
 import { clamp, easeOutCubic, rand, DEG } from '../core/math.js';
 
 // Boss entity: entrance, phase-based attack rotation with telegraphs, movement
@@ -294,6 +295,16 @@ export class Boss {
     }
     const key = this.def.art;
     const art = BOSS_ART[key];
+    // returning (remixed) bosses carry a pulsing aura behind the body
+    if (this.def.aura && this.state !== BOSS_STATE.DEAD) {
+      const gs = glowSprite(this.def.aura, 32);
+      const s = Math.max(this.def.size[0], this.def.size[1]) * (1.05 + Math.sin(this.t * 2.2) * 0.05);
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = 0.3 + this.rage * 0.15;
+      ctx.drawImage(gs.canvas, this.x - s / 2, this.y - s / 2, s, s);
+      ctx.globalAlpha = 1;
+      ctx.globalCompositeOperation = 'source-over';
+    }
     ctx.save();
     ctx.translate(this.x, this.y);
     ctx.lineJoin = 'round';

@@ -15,7 +15,23 @@ const INK_UI = '#0c0820';
 const BAR_X = 29;
 const BAR_W = 140;
 // Sector accent colours (match the sector backgrounds).
-const SECTOR_ACCENT = { meadow: '#4fd8ff', amber: '#9dff5a', crystal: '#c49bff', toxic: '#ff7a3d', void: '#ff5ec8' };
+const SECTOR_ACCENT = {
+  meadow: '#4fd8ff',
+  amber: '#9dff5a',
+  crystal: '#c49bff',
+  toxic: '#ff7a3d',
+  void: '#ff5ec8',
+  solar: '#ffc23d',
+  frost: '#cfefff',
+  storm: '#3dffb0',
+  prism: '#8ff0ff',
+  scrap: '#ff9b3d',
+  ocean: '#12e0c8',
+  rift: '#ff5ee0',
+  darkstar: '#ff4a3a',
+  abyss: '#9fb3ff',
+  singularity: '#ffd23f',
+};
 
 // Dark glass panel with a crisp accent border and a thin inner highlight.
 function panel(x, pts, accent) {

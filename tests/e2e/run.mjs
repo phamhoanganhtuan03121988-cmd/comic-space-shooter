@@ -138,7 +138,7 @@ await check('3. PLAY -> sector select -> Level 1 starts (locked levels disabled)
   await page.click('#screen-menu [data-action="play"]');
   assert(await active(page, 'levels'), 'levels not shown');
   const cards = await page.locator('.level-card').count();
-  assert(cards === 5, 'cards ' + cards);
+  assert(cards === 15, 'cards ' + cards);
   assert(await page.locator('.level-card[data-level="1"]').isDisabled(), 'level 2 should be locked');
   await page.screenshot({ path: path.join(outDir, 'levels-390.png') });
   await page.click('.level-card[data-level="0"]');
@@ -474,7 +474,7 @@ await check('22-23. Save persists across reload (coins, upgrades, unlocked secto
   await page.click('#screen-levels [data-action="back"]');
 });
 
-await check('Full campaign: all 5 sectors can be completed in sequence', async () => {
+await check('Core campaign: sectors 1-5 can be completed in sequence and unlock sector 6', async () => {
   const r = await G(page, () => {
     const g = window.__cfd;
     const out = [];
@@ -488,11 +488,94 @@ await check('Full campaign: all 5 sectors can be completed in sequence', async (
     return { out, unlocked: g.save.data.unlockedLevel, cleared: g.save.data.clearedLevels.length };
   });
   assert(r.out.length === 5 && r.out.every((s) => s.includes(':victory')), JSON.stringify(r));
-  assert(r.unlocked === 5 && r.cleared === 5, JSON.stringify(r));
+  assert(r.unlocked === 6 && r.cleared === 5, JSON.stringify(r));
+  await page.waitForTimeout(700);
+  const title = await page.locator('#victory-title').innerText();
+  assert(title.includes('VICTORY') && !title.includes('GALAXY SAVED'), 'sector 5 is no longer the end: ' + title);
+  const reward = await page.locator('#victory-reward').innerText();
+  assert(reward.includes('SECTOR 6 UNLOCKED'), 'unlock notice ' + reward);
+});
+
+await check('Sector 6 unlock: sector list shows 15 sectors in 4 acts, sector 6 playable, 7 locked', async () => {
+  await page.click('#screen-victory [data-action="menu"]');
+  await page.click('#screen-menu [data-action="play"]');
+  assert(await active(page, 'levels'), 'levels not shown');
+  assert((await page.locator('.level-card').count()) === 15, 'cards');
+  assert((await page.locator('.act-head').count()) === 4, 'act headers');
+  assert(!(await page.locator('.level-card[data-level="5"]').isDisabled()), 'sector 6 should be unlocked');
+  assert(await page.locator('.level-card[data-level="6"]').isDisabled(), 'sector 7 should be locked');
+  await page.locator('.level-card[data-level="5"]').scrollIntoViewIfNeeded();
+  await page.screenshot({ path: path.join(outDir, 'levels-15-390.png') });
+  await page.click('.level-card[data-level="5"]');
+  const r = await G(page, () => ({ state: window.__cfd.state, id: window.__cfd.level.id, theme: window.__cfd.level.theme }));
+  assert(r.state === 'playing' && r.id === 6 && r.theme === 'solar', JSON.stringify(r));
+  await page.screenshot({ path: path.join(outDir, 'sector6-390.png') });
+});
+
+await check('Expansion: sectors 6-15 can be completed in sequence (10 -> 11, 15 -> GALAXY SAVED)', async () => {
+  const r = await G(page, () => {
+    const g = window.__cfd;
+    const out = [];
+    const unlockAfter = {};
+    for (let idx = 5; idx < 15; idx++) {
+      g.startLevel(idx, idx === 5 ? 0 : g.run.score);
+      g.debug.god = true;
+      g.player.power = 5;
+      const res = window.__simBot(900);
+      out.push(g.level.id + ':' + g.state + ':' + res + ':' + g.level.boss);
+      unlockAfter[g.level.id] = g.save.data.unlockedLevel;
+      if (g.state !== 'victory') break;
+    }
+    return { out, unlockAfter, unlocked: g.save.data.unlockedLevel, cleared: g.save.data.clearedLevels.length };
+  });
+  assert(r.out.length === 10 && r.out.every((s) => s.includes(':victory')), JSON.stringify(r.out));
+  assert(r.unlockAfter[6] === 7 && r.unlockAfter[10] === 11 && r.unlockAfter[15] === 15, JSON.stringify(r.unlockAfter));
+  assert(r.unlocked === 15 && r.cleared === 15, JSON.stringify(r));
+  assert(r.out[9].endsWith('voidEmpress2'), 'final boss ' + r.out[9]);
   await page.waitForTimeout(700);
   const title = await page.locator('#victory-title').innerText();
   assert(title.includes('GALAXY SAVED'), 'final title ' + title);
   await page.screenshot({ path: path.join(outDir, 'campaign-complete-390.png') });
+});
+
+await check('Sector 15 finale: Void Empress Ascended runs 5 phases (75/50/25/10%) and attacks in each', async () => {
+  const r = await G(page, () => {
+    const g = window.__cfd;
+    g.startLevel(14, 0);
+    g.debug.god = true;
+    g.waves.skipToBoss();
+    window.__simBot(7);
+    const b = g.bossManager.active;
+    const phases = [b.phaseIndex];
+    const bullets = [];
+    for (const frac of [0.74, 0.49, 0.24, 0.09]) {
+      b.hp = b.maxHp * frac + 1;
+      b.damage(2);
+      phases.push(b.phaseIndex + ':' + b.state);
+      let fired = 0;
+      const orig = g.bullets.fireEnemy.bind(g.bullets);
+      g.bullets.fireEnemy = (...a) => (fired++, orig(...a));
+      window.__simBot(6);
+      g.bullets.fireEnemy = orig;
+      bullets.push(fired);
+    }
+    return { name: b.def.name, art: b.def.art, phases, bullets };
+  });
+  assert(r.art === 'voidEmpress' && r.name.includes('VOID EMPRESS'), JSON.stringify(r));
+  assert(r.phases.join() === '0,1:transition,2:transition,3:transition,4:transition', JSON.stringify(r.phases));
+  assert(r.bullets.every((n) => n > 0), 'each phase attacks ' + r.bullets);
+  await page.screenshot({ path: path.join(outDir, 'boss15-390.png') });
+});
+
+await check('Save/load beyond sector 5 (all 15 unlocked survive a reload)', async () => {
+  await page.reload();
+  await page.waitForFunction(() => window.__cfd && window.__cfd.loop.running);
+  await page.evaluate(BOT);
+  const d = await G(page, () => window.__cfd.save.data);
+  assert(d.unlockedLevel === 15 && d.clearedLevels.length === 15, JSON.stringify({ u: d.unlockedLevel, c: d.clearedLevels }));
+  await page.click('#screen-menu [data-action="play"]');
+  assert(!(await page.locator('.level-card[data-level="14"]').isDisabled()), 'sector 15 should be unlocked');
+  await page.click('#screen-levels [data-action="back"]');
 });
 
 await check('Real-time play for 6s with touch input stays stable', async () => {

@@ -1,6 +1,7 @@
 import { STATE } from '../game/GameState.js';
 import { CONFIG } from '../data/config.js';
 import { TAU } from '../core/math.js';
+import { LEVELS } from '../data/levels.js';
 
 // Debug mode (OFF by default). Enable from Settings or with ?debug=1.
 // Shows FPS / entity counts, draws collision circles and exposes cheat
@@ -83,7 +84,7 @@ export class Debug {
         this.showHitboxes = !this.showHitboxes;
         break;
       case 'unlock':
-        g.save.data.unlockedLevel = 5;
+        g.save.data.unlockedLevel = LEVELS.length;
         g.save.save();
         break;
       default:

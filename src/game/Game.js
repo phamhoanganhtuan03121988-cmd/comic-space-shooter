@@ -5,7 +5,7 @@ import { STATE, RunState } from './GameState.js';
 import { GameLoop } from './GameLoop.js';
 import { Viewport } from '../core/Viewport.js';
 import { Input } from '../core/Input.js';
-import { SaveSystem } from '../systems/SaveSystem.js';
+import { SaveSystem, recordClear, repairProgress } from '../systems/SaveSystem.js';
 import { ComboSystem } from '../systems/ComboSystem.js';
 import { ScoreSystem } from '../systems/ScoreSystem.js';
 import { CollisionSystem } from '../systems/CollisionSystem.js';
@@ -62,6 +62,7 @@ export class Game {
 
   init() {
     this.save = new SaveSystem();
+    repairProgress(this.save.data, LEVELS.length);
     const settings = this.save.data.settings;
     this.viewport = new Viewport(this.app, this.stage, this.canvas);
     this.input = new Input(this.canvas, this.viewport);
@@ -250,9 +251,7 @@ export class Game {
     const collected = run.coins;
     run.coins += clearCoins + comboCoins;
     const d = this.save.data;
-    const wasUnlocked = d.unlockedLevel;
-    d.unlockedLevel = Math.min(LEVELS.length, Math.max(d.unlockedLevel, level.id + 1));
-    if (!d.clearedLevels.includes(level.id)) d.clearedLevels.push(level.id);
+    const newUnlock = recordClear(d, level.id, LEVELS.length);
     this.bankRun();
     this.bullets.clear();
     this.state = STATE.VICTORY;
@@ -273,7 +272,7 @@ export class Game {
       perfectWaves: run.perfectWaves,
       noDamageWaves: run.noDamageWaves,
       newBest: run.newBest,
-      unlocked: d.unlockedLevel > wasUnlocked ? LEVELS[d.unlockedLevel - 1] : null,
+      unlocked: newUnlock ? LEVELS[d.unlockedLevel - 1] : null,
       isLast: run.levelIndex >= LEVELS.length - 1,
     });
   }

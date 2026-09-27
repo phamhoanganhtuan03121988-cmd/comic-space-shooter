@@ -17,7 +17,10 @@
 // Common fields: telegraph (s of warning before firing), bullet (sprite kind:
 // orb | big | needle | petal | blob), damage, from ([dx, dy] emitter offset).
 
-export const BOSSES = {
+import { buildBossVariants } from './expansion/bosses.js';
+
+// The five core bosses (sectors 1-5).
+export const CORE_BOSSES = {
   kingGloop: {
     name: 'KING GLOOP',
     title: 'Monarch of the Slime Moons',
@@ -220,3 +223,6 @@ export const BOSSES = {
     ],
   },
 };
+
+// Core bosses + their remixed encounters for sectors 6-15.
+export const BOSSES = { ...CORE_BOSSES, ...buildBossVariants(CORE_BOSSES) };

@@ -22,7 +22,10 @@
 //   x, amp, duration  pass path parameters
 //   delay      seconds after the wave starts; interval = seconds between members
 
-export const THEMES = {
+import { EXPANSION_LEVELS, EXPANSION_THEMES } from './expansion/sectors.js';
+
+// Palettes of the core sectors 1-5.
+export const CORE_THEMES = {
   meadow: {
     top: '#030920',
     bottom: '#0a2146',
@@ -65,7 +68,8 @@ export const THEMES = {
   },
 };
 
-export const LEVELS = [
+// The core campaign: sectors 1-5 (locked content, do not edit).
+export const CORE_LEVELS = [
   {
     id: 1,
     name: 'MEADOW NEBULA',
@@ -282,3 +286,8 @@ export const LEVELS = [
     ],
   },
 ];
+
+// Full 15-sector campaign: the core sectors followed by the expansion
+// (src/data/expansion/sectors.js).
+export const THEMES = { ...CORE_THEMES, ...EXPANSION_THEMES };
+export const LEVELS = [...CORE_LEVELS, ...EXPANSION_LEVELS];

@@ -66,9 +66,84 @@ const SCENES = {
     rock: ['obsidian', ['#5a3a7a', '#2a1440', '#0a0414', '#ff5ec8']],
     mote: '#c78aff',
   },
+
+  // ---- sectors 6-15 --------------------------------------------------
+  // S6: golden solar wind over deep teal
+  solar: {
+    neb: { a: '#e08a1a', b: '#1a8a9a', hi: '#fff0c0', lane: '#040406', star: '#fff6e0', amount: 0.42, center: 0.44, lo: 0.42 },
+    lights: [[0.0, 0.18, 1.0, '#ff9b2e', 0.22]],
+    rock: ['rock', ['#e8b878', '#a0602c', '#40200c', '#ffe07a']],
+    mote: '#ffd98a',
+  },
+  // S7: pale ice-blue and lavender, crisp and cold
+  frost: {
+    neb: { a: '#6a8aff', b: '#bfe8ff', hi: '#ffffff', lane: '#02040c', star: '#f4fbff', amount: 0.4, center: 0.46, lo: 0.43 },
+    lights: [[0.9, 0.2, 0.8, '#9fd0ff', 0.16]],
+    rock: ['crystal', ['#ffffff', '#a8d0f0', '#4a6a9a', '#dff6ff']],
+    mote: '#ffffff',
+  },
+  // S8: electric teal / green with bright filaments
+  storm: {
+    neb: { a: '#0a8a6a', b: '#3adf5a', hi: '#e0fff0', lane: '#010604', star: '#e0fff4', amount: 0.46, center: 0.44, lo: 0.41 },
+    lights: [[0.95, 0.2, 0.8, '#18d9a0', 0.18]],
+    rock: ['lava', ['#4a6a64', '#243a36', '#0a1614', '#5dffb0']],
+    mote: '#8dffcf',
+  },
+  // S9: near-black void with prismatic cyan / pink wisps
+  prism: {
+    neb: { a: '#1a8ad0', b: '#d0408a', hi: '#ffffff', lane: '#000000', star: '#f2f6ff', amount: 0.3, center: 0.4, lo: 0.47 },
+    lights: [[0.05, 0.3, 0.7, '#6ad0ff', 0.12]],
+    rock: ['crystal', ['#e8f6ff', '#8ab8ff', '#2a3a8a', '#ff9ad8']],
+    mote: '#c8e8ff',
+  },
+  // S10: rust and gunmetal haze
+  scrap: {
+    neb: { a: '#6a4a2a', b: '#4a5a6a', hi: '#ffc890', lane: '#030303', star: '#f0e8e0', amount: 0.44, center: 0.46, lo: 0.42 },
+    lights: [[0.9, 0.2, 0.8, '#c86a2a', 0.14]],
+    rock: ['debris', ['#9aa0aa', '#5a606a', '#22262e', '#ff9b3d']],
+    mote: '#e0b890',
+  },
+  // S11: deep ocean blue with aqua bioluminescence
+  ocean: {
+    neb: { a: '#0a4ad0', b: '#10d0c0', hi: '#d0fff8', lane: '#010410', star: '#e0fbff', amount: 0.46, center: 0.45, lo: 0.41 },
+    lights: [[0.05, 0.26, 0.9, '#12e0c8', 0.14], [0.9, 0.95, 0.8, '#3a5aff', 0.14]],
+    rock: ['rock', ['#8ac8d8', '#3a7088', '#0e2a3a', '#9ffff0']],
+    mote: '#8ff6ff',
+  },
+  // S12: magenta / indigo, warped and unstable
+  rift: {
+    neb: { a: '#5a1ad0', b: '#e01ea0', hi: '#ffd0f4', lane: '#020005', star: '#fbe6ff', amount: 0.48, center: 0.42, lo: 0.4 },
+    lights: [[0.9, 0.34, 0.7, '#ff4fd0', 0.16]],
+    rock: ['obsidian', ['#7a3a9a', '#3a1450', '#10041a', '#ff5ec8']],
+    mote: '#e08aff',
+  },
+  // S13: black and crimson, a dying star
+  darkstar: {
+    neb: { a: '#8a0a1a', b: '#ff3a2a', hi: '#ffc0a0', lane: '#000000', star: '#ffe0e0', amount: 0.38, center: 0.4, lo: 0.44 },
+    lights: [[0.05, 0.2, 0.9, '#ff2a1a', 0.2]],
+    rock: ['lava', ['#5a3a3a', '#2a1414', '#0a0404', '#ff3a2a']],
+    mote: '#ff8a8a',
+  },
+  // S14: cold blue-violet abyss, sparse and vast
+  abyss: {
+    neb: { a: '#1a2a9a', b: '#5a3ad0', hi: '#d8e0ff', lane: '#000002', star: '#e6ecff', amount: 0.32, center: 0.4, lo: 0.46, galaxy: '#9fb3ff' },
+    lights: [[0.8, 0.22, 0.8, '#4a5aff', 0.12]],
+    rock: ['obsidian', ['#3a4a7a', '#1a2248', '#060a1a', '#9fb3ff']],
+    mote: '#9fb3ff',
+  },
+  // S15: gold and violet spiralling into the singularity
+  singularity: {
+    neb: { a: '#b04aff', b: '#ff9a2e', hi: '#fff4d0', lane: '#010002', star: '#fff4e6', amount: 0.44, center: 0.4, lo: 0.42, galaxy: '#ffd9a0' },
+    lights: [[0.88, 0.26, 0.9, '#ffb13d', 0.18], [0.1, 0.8, 0.8, '#b04aff', 0.14]],
+    rock: ['crystal', ['#fff0d0', '#c89a50', '#4a2a1a', '#ffd23f']],
+    mote: '#ffd9a0',
+  },
 };
 
+// Pre-rendered scenes, keyed by sector + size. Only the most recent few are
+// kept (15 sectors x full-screen layers would otherwise pile up in memory).
 const sceneCache = new Map();
+const SCENE_CACHE_MAX = 3;
 
 export class Background {
   constructor(W, H) {
@@ -118,6 +193,11 @@ export class Background {
     const H = this.H;
     const key = this.themeKey + ':' + W + 'x' + H;
     let s = sceneCache.get(key);
+    if (s) {
+      // mark as most recently used
+      sceneCache.delete(key);
+      sceneCache.set(key, s);
+    }
     if (!s) {
       const th = this.theme;
       const sc = this.scene;
@@ -131,6 +211,7 @@ export class Background {
         rocks: [0, 1, 2].map(() => asteroidSprite(style, pal, rnd)),
       };
       sceneCache.set(key, s);
+      while (sceneCache.size > SCENE_CACHE_MAX) sceneCache.delete(sceneCache.keys().next().value);
     }
     this.base = s.base;
     this.nebula = s.nebula;

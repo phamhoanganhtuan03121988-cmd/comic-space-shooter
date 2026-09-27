@@ -1,9 +1,11 @@
 import { LEVELS } from '../data/levels.js';
+import { ACTS } from '../data/expansion/sectors.js';
 import { BOSSES } from '../data/bosses.js';
 import { ENEMY_TYPES } from '../data/enemies.js';
 import { enemyIconDataURL } from '../art/EnemyArt.js';
 
-// Sector list built from level data; locked sectors are shown but disabled.
+// Sector list built from level data, grouped into acts; locked sectors are
+// shown but disabled.
 
 export class LevelSelect {
   constructor(ui) {
@@ -15,6 +17,13 @@ export class LevelSelect {
     const d = this.ui.game.save.data;
     const frag = document.createDocumentFragment();
     LEVELS.forEach((lvl, i) => {
+      const act = ACTS.find((a) => a.from === lvl.id);
+      if (act) {
+        const h = document.createElement('div');
+        h.className = 'act-head' + (act.from <= d.unlockedLevel ? '' : ' locked');
+        h.innerHTML = `<b>${act.name}</b><span>${act.title}</span><i>SECTORS ${act.from}–${act.to}</i>`;
+        frag.appendChild(h);
+      }
       const unlocked = lvl.id <= d.unlockedLevel;
       const cleared = d.clearedLevels.includes(lvl.id);
       const btn = document.createElement('button');

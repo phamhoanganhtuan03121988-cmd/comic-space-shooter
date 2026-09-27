@@ -19,7 +19,7 @@ Toàn bộ tên game, nhân vật, quái, boss, UI, artwork, âm thanh đều **
 
 ## Game overview
 
-Trang trại vũ trụ bị lũ sinh vật ngoài hành tinh tấn công. Bạn lái chiến đấu cơ **Starhopper**, vượt qua **5 sector**. Mỗi sector có 4–6 wave và một **boss** riêng:
+Trang trại vũ trụ bị lũ sinh vật ngoài hành tinh tấn công. Bạn lái chiến đấu cơ **Starhopper**, vượt qua chiến dịch **15 sector** chia thành 4 act. Mỗi sector có 4–7 wave và một **boss** riêng. Sector 1–5 là phần lõi (giữ nguyên):
 
 | Sector | Tên | Boss | Đặc điểm |
 |---|---|---|---|
@@ -28,6 +28,21 @@ Trang trại vũ trụ bị lũ sinh vật ngoài hành tinh tấn công. Bạn 
 | 3 | Crystal Caverns | BROODMOTHER | Nhiều loại enemy, 2 phase, triệu hồi quái |
 | 4 | Toxic Tempest | JELLYTRON | Bullet pattern phức tạp, bắn toả, di chuyển hình số 8, laser, triệu hồi |
 | 5 | Void Rift | VOID EMPRESS ZORBA | Khó rõ rệt, 4 phase (100/75/50/25%), nova, laser, spiral, triệu hồi |
+
+Sector 6–15 (mở rộng, `src/data/expansion/`). Không thêm loại enemy hay boss mới: độ khó đến từ đội hình dày hơn, tổ hợp enemy, đường bay mới (`spiral`, `hook`, `diag`, `orbit`), đội hình mới (`flanks`, `hex`, `stairs`, `crown`), tốc độ bắn/đạn và boss được remix phase:
+
+| Sector | Tên | Boss (remix) | Act |
+|---|---|---|---|
+| 6 | Solar Frontier | KING GLOOP II · 3 phase | II · mid-game |
+| 7 | Frozen Nebula | BUZZ BARON II · 2 phase | II |
+| 8 | Bioelectric Storm | JELLYTRON II · 3 phase | II |
+| 9 | Crystal Void | BROODMOTHER II · 3 phase | II |
+| 10 | Mechanical Graveyard | BUZZ BARON MK III · 3 phase | II |
+| 11 | Celestial Ocean | JELLYTRON PRIME · 3 phase | III · late game |
+| 12 | Gravity Rift | BROODMOTHER PRIME · 4 phase | III |
+| 13 | Dark Star | KING GLOOP PRIME · 4 phase | III |
+| 14 | Cosmic Abyss | BUZZ BARON OMEGA · 4 phase | IV · endgame |
+| 15 | Final Singularity | VOID EMPRESS ASCENDED · 5 phase (75/50/25/10%) | IV · finale |
 
 ## Tech stack
 
@@ -181,7 +196,7 @@ Chỉ **lõi phát sáng** ở giữa tàu mới nhận đạn (hitbox nhỏ, ki
 
 ## How to add a level
 
-Thêm object vào mảng `LEVELS` trong `src/data/levels.js` (id tăng dần):
+Sector 1–5 nằm trong `CORE_LEVELS` (`src/data/levels.js`, không sửa). Sector mới thêm vào `EXPANSION_LEVELS` trong `src/data/expansion/sectors.js` (id tăng dần, có helper `hold()`, `pass()`, `wave()`); `LEVELS` = core + expansion:
 
 ```js
 {
@@ -196,7 +211,7 @@ Thêm object vào mảng `LEVELS` trong `src/data/levels.js` (id tăng dần):
 }
 ```
 
-Muốn có background mới thì thêm một theme vào `THEMES` (màu gradient, nebula, sao, hành tinh). Level select, save và unlock đều tự nhận level mới. Chạy `npm test` để validate data.
+Background mới: thêm palette vào `EXPANSION_THEMES`, scene (nebula, ánh sáng, asteroid, mote) vào `SCENES` trong `src/effects/Background.js` và set piece vào `buildPieces()` trong `src/art/SpaceArt.js`. Level select (kèm act header từ `ACTS`), save và unlock đều tự nhận level mới; save cũ được `repairProgress()` sửa để người đã phá đảo 5 sector mở được sector 6. Chạy `npm test` để validate data (có fingerprint đảm bảo sector 1–5 không bị đổi).
 
 ## How to add a boss
 
@@ -209,6 +224,8 @@ Muốn có background mới thì thêm một theme vào `THEMES` (màu gradient,
    - `back(ctx, b)` / `front(ctx, b)` (tuỳ chọn): phần chuyển động vẽ mỗi frame, như cánh, chân, xúc tu, mắt, đèn. Dùng `b.t`, `b.charge`, `b.lookX/lookY`, `b.rage`, `b.phaseIndex`.
    - Tuỳ chọn: `phased: true` (thân đổi theo phase), `squash: true` (nhún nhảy), `oy` (lệch tâm).
 4. Gán `boss: 'id'` cho level.
+
+Boss tái xuất (remix) không cần art mới: thêm vào `buildBossVariants()` trong `src/data/expansion/bosses.js` bằng `variant(CORE.x, { name, title, aura, hp, score, coins, phases })`. Variant giữ nguyên art, size, hitbox, contact damage của boss gốc; chỉ đổi phase/attack (dùng các factory `fan()`, `ring()`, `laser()`...). `aura` là vầng sáng nhẹ phía sau để nhận ra boss nâng cấp.
 
 Muốn thêm kiểu attack mới: viết thêm runner trong `src/boss/BossPatterns.js`, gồm `start`, `update`, và tuỳ chọn `telegraph`, `render`.
 

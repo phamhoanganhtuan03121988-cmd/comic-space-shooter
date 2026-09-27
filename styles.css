@@ -728,6 +728,45 @@ body {
   color: var(--muted);
 }
 
+.act-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 10px 2px 2px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid rgba(140, 200, 255, 0.25);
+  font-family: var(--font-display);
+  letter-spacing: 1px;
+}
+
+.act-head:first-child {
+  margin-top: 0;
+}
+
+.act-head b {
+  color: var(--cyan);
+  font-size: calc(var(--ui) * 12px);
+}
+
+.act-head span {
+  color: #fff;
+  font-size: calc(var(--ui) * 12px);
+}
+
+.act-head i {
+  margin-left: auto;
+  font-style: normal;
+  font-family: var(--font);
+  font-weight: 800;
+  font-size: calc(var(--ui) * 10px);
+  color: var(--muted);
+}
+
+.act-head.locked b,
+.act-head.locked span {
+  opacity: 0.45;
+}
+
 .level-card .badge {
   font-size: 11px;
   font-weight: 900;
