@@ -1,33 +1,74 @@
 import { THEMES } from '../data/levels.js';
-import { makeCanvas, hexA, shade, flareSprite } from '../art/Sprites.js';
+import { flareSprite, glowSprite } from '../art/Sprites.js';
+import { nebulaTile, baseLayer, buildPieces, asteroidSprite, seeded } from '../art/SpaceArt.js';
 import { rand, TAU } from '../core/math.js';
 
-// Parallax space background (all heavy work pre-rendered once per theme):
-//   base      static vertical gradient + edge vignette (keeps the centre calm)
-//   nebula    transparent tile of clouds, wisps and dust lanes; scrolls and
-//             wraps seamlessly
-//   planet    shaded planet with atmosphere rim + ring (+ a small moon)
-//   asteroids a few slow drifting rocks (mid parallax)
-//   stars     three twinkling layers + a handful of bright glowing stars
+// Parallax sector background. All heavy work is pre-rendered once per sector
+// (src/art/SpaceArt.js); per frame it is only blits and a few rects:
+//   base      static gradient + big soft light sources + vignette
+//   nebula    tileable noise clouds, filaments, dust lanes (slow scroll)
+//   pieces    celestial set pieces (planets, black hole...) drifting slowly
+//   stars     three twinkling layers + a handful of flare stars
+//   asteroids a few dim themed rocks/crystals (mid parallax)
+//   motes     tiny foreground particles (fastest layer)
 //   dust      speed streaks (stretch when the boss warp kicks in)
-// Colours come from the level theme; everything stays dimmer than bullets.
+// Scenery stays darker than gameplay; the centre lane is kept the calmest.
 
 const LAYERS = [
   { count: 46, speed: 10, size: 1, alpha: 0.55 },
-  { count: 30, speed: 26, size: 1.6, alpha: 0.8 },
-  { count: 12, speed: 60, size: 2.2, alpha: 1 },
+  { count: 28, speed: 26, size: 1.6, alpha: 0.75 },
+  { count: 10, speed: 60, size: 2.2, alpha: 0.9 },
 ];
-const BRIGHT_STARS = 7;
+const BRIGHT_STARS = 6;
 const ASTEROIDS = 5;
+const MOTES = 12;
 
-// Extra per-theme flavour, purely visual.
-const FEATURES = {
-  meadow: { wisps: 3, galaxy: false, asteroidTint: '#6d7f8a' },
-  amber: { wisps: 2, galaxy: false, asteroidTint: '#8a5a3c' },
-  crystal: { wisps: 3, galaxy: true, asteroidTint: '#5d5a99' },
-  toxic: { wisps: 4, galaxy: false, asteroidTint: '#56703a' },
-  void: { wisps: 3, galaxy: true, asteroidTint: '#4d2a5c' },
+// Per-sector art direction (visual only).
+const SCENES = {
+  // S1: deep blue / cyan, clean and readable
+  meadow: {
+    neb: { a: '#1a4dff', b: '#18c8ff', hi: '#c8f6ff', lane: '#01030d', star: '#dff4ff', amount: 0.5, center: 0.5, lo: 0.4 },
+    lights: [[0.95, 0.12, 0.9, '#1f8cff', 0.2]],
+    rock: ['rock', ['#8fb4d8', '#4a6a94', '#1c2c4c', '#aef4ff']],
+    mote: '#9fe8ff',
+  },
+  // S2: green / amber, organic and warm
+  amber: {
+    neb: { a: '#1fae5a', b: '#ffa12e', hi: '#fff0b8', lane: '#050803', star: '#fff2d8', amount: 0.4, center: 0.45, lo: 0.43 },
+    lights: [
+      [0.05, 0.2, 0.8, '#3fdc6a', 0.14],
+      [0.9, 0.85, 0.9, '#ff9b2e', 0.16],
+    ],
+    rock: ['rock', ['#d8a870', '#8a5a2c', '#3a220c', '#ffd98a']],
+    mote: '#ffd98a',
+  },
+  // S3: violet / crystal
+  crystal: {
+    neb: { a: '#7a2bff', b: '#2fc8ff', hi: '#f0e0ff', lane: '#05010f', star: '#efe6ff', amount: 0.52, center: 0.48, lo: 0.4, galaxy: '#c9a8ff' },
+    lights: [[0.5, 0.0, 0.9, '#a45cff', 0.16]],
+    rock: ['crystal', ['#d6c2ff', '#7a4de0', '#2a1070', '#8ff0ff']],
+    mote: '#d0b8ff',
+  },
+  // S4: red / orange, dangerous, stronger contrast
+  toxic: {
+    neb: { a: '#e0321a', b: '#ff8a1f', hi: '#ffe0a0', lane: '#080000', star: '#ffe6d6', amount: 0.44, center: 0.42, lo: 0.41 },
+    lights: [
+      [0.0, 0.0, 1.1, '#ff3a14', 0.28],
+      [1.0, 1.0, 0.8, '#b3123d', 0.18],
+    ],
+    rock: ['lava', ['#6a4a44', '#3a2420', '#140806', '#ff8a2e']],
+    mote: '#ffab6b',
+  },
+  // S5: dark endgame cosmos, deep purple / black
+  void: {
+    neb: { a: '#4a16b8', b: '#d0247a', hi: '#ffd0f0', lane: '#000000', star: '#f2e6ff', amount: 0.42, center: 0.42, lo: 0.44, galaxy: '#ff9ad8' },
+    lights: [[0.7, 0.26, 0.7, '#7a2bff', 0.14]],
+    rock: ['obsidian', ['#5a3a7a', '#2a1440', '#0a0414', '#ff5ec8']],
+    mote: '#c78aff',
+  },
 };
+
+const sceneCache = new Map();
 
 export class Background {
   constructor(W, H) {
@@ -45,276 +86,70 @@ export class Background {
       return arr;
     });
     this.bright = [];
-    for (let i = 0; i < BRIGHT_STARS; i++) this.bright.push({ x: rand(0, W), y: rand(0, H), tw: rand(0, TAU), s: rand(10, 18) });
+    for (let i = 0; i < BRIGHT_STARS; i++) this.bright.push({ x: rand(0, W), y: rand(0, H), tw: rand(0, TAU), s: rand(9, 16) });
     this.dust = [];
     for (let i = 0; i < 8; i++) this.dust.push({ x: rand(0, W), y: rand(0, H), len: rand(10, 26), speed: rand(180, 320) });
     this.rocks = [];
     for (let i = 0; i < ASTEROIDS; i++) this.rocks.push({ x: rand(0, W), y: rand(0, H), r: rand(6, 12), rot: rand(0, TAU), vr: rand(-0.6, 0.6), speed: rand(14, 24), k: i % 3 });
-    this.rockSprites = [];
-    this.planetY = 0;
+    this.motes = [];
+    for (let i = 0; i < MOTES; i++) this.motes.push({ x: rand(0, W), y: rand(0, H), s: rand(2.5, 6), speed: rand(70, 130), a: rand(0.25, 0.5), drift: rand(-8, 8) });
+    this.pieces = [];
     this.nebula = null;
     this.setTheme('meadow');
   }
 
   resize(W, H) {
-    const changed = H !== this.H;
+    const changed = H !== this.H || W !== this.W;
     this.W = W;
     this.H = H;
-    if (changed) this.buildNebula();
+    if (changed) this.build();
   }
 
   setTheme(key) {
     if (key === this.themeKey && this.nebula) return;
     this.themeKey = key;
     this.theme = THEMES[key] || THEMES.meadow;
-    this.feature = FEATURES[key] || FEATURES.meadow;
-    this.planetY = this.theme.planet.y * this.H;
-    this.buildNebula();
+    this.scene = SCENES[key] || SCENES.meadow;
+    this.build();
   }
 
-  buildNebula() {
+  build() {
     const W = this.W;
     const H = this.H;
-    const th = this.theme;
-    let seed = th.top.charCodeAt(2) * 97 + th.bottom.charCodeAt(3);
-    const rnd = () => {
-      seed = (seed * 16807) % 2147483647;
-      return (seed % 10000) / 10000;
-    };
-
-    // --- static base: gradient + vignette (never scrolls, so no seam)
-    const base = makeCanvas(W, H);
-    const bctx = base.getContext('2d');
-    const bg = bctx.createLinearGradient(0, 0, 0, H);
-    bg.addColorStop(0, th.top);
-    bg.addColorStop(0.55, shade(th.top, 0.03));
-    bg.addColorStop(1, th.bottom);
-    bctx.fillStyle = bg;
-    bctx.fillRect(0, 0, W, H);
-    const vig = bctx.createRadialGradient(W / 2, H * 0.55, H * 0.25, W / 2, H * 0.55, H * 0.8);
-    vig.addColorStop(0, 'rgba(0,0,0,0)');
-    vig.addColorStop(1, 'rgba(3,0,12,0.55)');
-    bctx.fillStyle = vig;
-    bctx.fillRect(0, 0, W, H);
-    this.base = base;
-
-    // --- scrolling nebula tile (drawn with vertical wrap)
-    const c = makeCanvas(W, H);
-    const ctx = c.getContext('2d');
-    const blob = (x, y, r, col, a) => {
-      for (const oy of [-H, 0, H]) {
-        const g = ctx.createRadialGradient(x, y + oy, 0, x, y + oy, r);
-        g.addColorStop(0, hexA(col, a));
-        g.addColorStop(0.5, hexA(col, a * 0.45));
-        g.addColorStop(1, hexA(col, 0));
-        ctx.fillStyle = g;
-        ctx.fillRect(x - r, y + oy - r, r * 2, r * 2);
-      }
-    };
-    ctx.globalCompositeOperation = 'lighter';
-    // big soft clouds
-    for (let i = 0; i < 14; i++) blob(rnd() * W, rnd() * H, 80 + rnd() * 150, th.nebula[i % th.nebula.length], 0.05 + rnd() * 0.07);
-    // wisps: chains of small blobs along curves
-    for (let w = 0; w < this.feature.wisps; w++) {
-      const col = th.nebula[w % th.nebula.length];
-      let x = rnd() * W;
-      let y = rnd() * H;
-      let a = rnd() * TAU;
-      for (let i = 0; i < 26; i++) {
-        blob(x, y, 18 + rnd() * 26, col, 0.05 + rnd() * 0.05);
-        a += (rnd() - 0.5) * 0.6;
-        x += Math.cos(a) * 14;
-        y += Math.sin(a) * 14;
-      }
+    const key = this.themeKey + ':' + W + 'x' + H;
+    let s = sceneCache.get(key);
+    if (!s) {
+      const th = this.theme;
+      const sc = this.scene;
+      const seed = th.top.charCodeAt(2) * 97 + th.bottom.charCodeAt(3) * 13 + 7;
+      const rnd = seeded(seed);
+      const [style, pal] = sc.rock;
+      s = {
+        base: baseLayer(W, H, th, sc),
+        nebula: nebulaTile(W, H, sc.neb, seed),
+        pieces: buildPieces(this.themeKey, rnd),
+        rocks: [0, 1, 2].map(() => asteroidSprite(style, pal, rnd)),
+      };
+      sceneCache.set(key, s);
     }
-    // distant spiral galaxy
-    if (this.feature.galaxy) {
-      const gx = W * (0.2 + rnd() * 0.6);
-      const gy = H * (0.2 + rnd() * 0.5);
-      blob(gx, gy, 30, '#ffffff', 0.18);
-      for (let k = 0; k < 2; k++) {
-        for (let i = 0; i < 40; i++) {
-          const ang = i * 0.18 + k * Math.PI;
-          const r = 6 + i * 1.6;
-          blob(gx + Math.cos(ang) * r, gy + Math.sin(ang) * r * 0.45, 7 + i * 0.2, th.nebula[k], 0.07);
-        }
-      }
-    }
-    ctx.globalCompositeOperation = 'source-over';
-    // darker dust lanes for depth
-    for (let i = 0; i < 5; i++) {
-      const x = rnd() * W;
-      const y = rnd() * H;
-      const r = 50 + rnd() * 90;
-      for (const oy of [-H, 0, H]) {
-        const g = ctx.createRadialGradient(x, y + oy, 0, x, y + oy, r);
-        g.addColorStop(0, 'rgba(4,0,14,0.28)');
-        g.addColorStop(1, 'rgba(4,0,14,0)');
-        ctx.fillStyle = g;
-        ctx.fillRect(x - r, y + oy - r, r * 2, r * 2);
-      }
-    }
-    // faint fixed tiny stars baked in
-    for (let i = 0; i < 110; i++) {
-      ctx.fillStyle = hexA(th.star, 0.15 + rnd() * 0.4);
-      const s = rnd() < 0.15 ? 1.5 : 1;
-      ctx.fillRect(rnd() * W, rnd() * H, s, s);
-    }
-    this.nebula = c;
-    this.buildPlanet();
-    this.buildRocks();
-  }
-
-  buildPlanet() {
-    const p = this.theme.planet;
-    const size = p.r * 3.6 + 30;
-    const R = 2;
-    const pc = makeCanvas(size * R, size * R);
-    const x = pc.getContext('2d');
-    x.scale(R, R);
-    x.translate(size / 2, size / 2);
-    const tilt = -0.35;
-    const ringBack = () => {
-      x.strokeStyle = hexA(p.ring, 0.55);
-      x.lineWidth = 4;
-      x.beginPath();
-      x.ellipse(0, 0, p.r * 1.65, p.r * 0.38, tilt, Math.PI, TAU);
-      x.stroke();
-      x.strokeStyle = hexA(p.ring, 0.25);
-      x.lineWidth = 2;
-      x.beginPath();
-      x.ellipse(0, 0, p.r * 1.85, p.r * 0.45, tilt, Math.PI, TAU);
-      x.stroke();
-    };
-    const ringFront = () => {
-      x.strokeStyle = hexA(p.ring, 0.75);
-      x.lineWidth = 4;
-      x.beginPath();
-      x.ellipse(0, 0, p.r * 1.65, p.r * 0.38, tilt, 0, Math.PI);
-      x.stroke();
-      x.strokeStyle = hexA(p.ring, 0.3);
-      x.lineWidth = 2;
-      x.beginPath();
-      x.ellipse(0, 0, p.r * 1.85, p.r * 0.45, tilt, 0, Math.PI);
-      x.stroke();
-    };
-    // atmosphere glow
-    const ag = x.createRadialGradient(0, 0, p.r * 0.9, 0, 0, p.r * 1.35);
-    ag.addColorStop(0, hexA(shade(p.color, 0.3), 0.45));
-    ag.addColorStop(1, hexA(p.color, 0));
-    x.fillStyle = ag;
-    x.beginPath();
-    x.arc(0, 0, p.r * 1.35, 0, TAU);
-    x.fill();
-    ringBack();
-    // sphere
-    x.save();
-    x.beginPath();
-    x.arc(0, 0, p.r, 0, TAU);
-    x.clip();
-    const g = x.createRadialGradient(-p.r * 0.45, -p.r * 0.45, p.r * 0.1, 0, 0, p.r * 1.05);
-    g.addColorStop(0, shade(p.color, 0.35));
-    g.addColorStop(0.6, p.color);
-    g.addColorStop(1, shade(p.color, -0.4));
-    x.fillStyle = g;
-    x.fillRect(-p.r, -p.r, p.r * 2, p.r * 2);
-    // bands
-    for (let i = -3; i <= 3; i++) {
-      x.fillStyle = i % 2 ? hexA(shade(p.color, 0.18), 0.35) : hexA(shade(p.color, -0.2), 0.3);
-      x.save();
-      x.rotate(tilt);
-      x.fillRect(-p.r, i * p.r * 0.26 - p.r * 0.06, p.r * 2, p.r * 0.12);
-      x.restore();
-    }
-    // craters
-    for (let i = 0; i < 4; i++) {
-      x.fillStyle = hexA(shade(p.color, -0.3), 0.35);
-      x.beginPath();
-      x.arc(Math.cos(i * 2.1) * p.r * 0.5, Math.sin(i * 1.7) * p.r * 0.45, p.r * (0.08 + i * 0.02), 0, TAU);
-      x.fill();
-    }
-    // terminator shadow
-    const sg = x.createLinearGradient(-p.r, -p.r, p.r, p.r);
-    sg.addColorStop(0.45, 'rgba(0,0,10,0)');
-    sg.addColorStop(1, 'rgba(0,0,10,0.65)');
-    x.fillStyle = sg;
-    x.fillRect(-p.r, -p.r, p.r * 2, p.r * 2);
-    x.restore();
-    // rim light
-    x.strokeStyle = hexA(shade(p.color, 0.45), 0.8);
-    x.lineWidth = 1.5;
-    x.beginPath();
-    x.arc(0, 0, p.r - 0.5, Math.PI * 0.95, Math.PI * 1.6);
-    x.stroke();
-    ringFront();
-    // small moon
-    const mx = p.r * 1.35;
-    const my = -p.r * 0.95;
-    const mr = p.r * 0.22;
-    const mg = x.createRadialGradient(mx - mr * 0.4, my - mr * 0.4, 1, mx, my, mr);
-    mg.addColorStop(0, '#f0ecff');
-    mg.addColorStop(1, '#6c6590');
-    x.fillStyle = mg;
-    x.beginPath();
-    x.arc(mx, my, mr, 0, TAU);
-    x.fill();
-    this.planet = { canvas: pc, size };
-  }
-
-  buildRocks() {
-    const tint = this.feature.asteroidTint;
-    this.rockSprites = [];
-    let seed = 7;
-    const rnd = () => {
-      seed = (seed * 16807) % 2147483647;
-      return (seed % 10000) / 10000;
-    };
-    for (let k = 0; k < 3; k++) {
-      const S = 40;
-      const c = makeCanvas(S * 2, S * 2);
-      const x = c.getContext('2d');
-      x.scale(2, 2);
-      x.translate(S / 2, S / 2);
-      x.beginPath();
-      const n = 9;
-      for (let i = 0; i < n; i++) {
-        const a = (i / n) * TAU;
-        const r = 15 * (0.72 + rnd() * 0.32);
-        if (i === 0) x.moveTo(Math.cos(a) * r, Math.sin(a) * r);
-        else x.lineTo(Math.cos(a) * r, Math.sin(a) * r);
-      }
-      x.closePath();
-      const g = x.createRadialGradient(-5, -5, 1, 0, 0, 17);
-      g.addColorStop(0, shade(tint, 0.3));
-      g.addColorStop(1, shade(tint, -0.35));
-      x.fillStyle = g;
-      x.fill();
-      x.strokeStyle = 'rgba(10,5,25,0.8)';
-      x.lineWidth = 1.5;
-      x.stroke();
-      x.fillStyle = hexA(shade(tint, -0.4), 0.8);
-      for (let i = 0; i < 3; i++) {
-        x.beginPath();
-        x.arc((rnd() - 0.5) * 14, (rnd() - 0.5) * 14, 1.5 + rnd() * 2.5, 0, TAU);
-        x.fill();
-      }
-      x.strokeStyle = 'rgba(255,255,255,0.35)';
-      x.lineWidth = 1.2;
-      x.beginPath();
-      x.arc(0, 0, 11, Math.PI * 1.05, Math.PI * 1.5);
-      x.stroke();
-      this.rockSprites.push({ canvas: c, size: S });
-    }
+    this.base = s.base;
+    this.nebula = s.nebula;
+    this.rockSprites = s.rocks;
+    this.pieces = s.pieces.map((p) => ({ sprite: p.sprite, x: p.x, y: p.y * H, speed: p.speed }));
   }
 
   update(dt) {
     this.t += dt;
     this.speedMul += (this.targetSpeedMul - this.speedMul) * Math.min(1, dt * 2);
     const sm = this.speedMul;
+    const W = this.W;
     const H = this.H;
     this.scroll = (this.scroll + dt * 8 * sm) % H;
-    this.planetY += dt * 5 * sm;
-    if (this.planetY > H + this.planet.size) this.planetY = -this.planet.size;
+    for (let i = 0; i < this.pieces.length; i++) {
+      const p = this.pieces[i];
+      p.y += dt * p.speed * sm;
+      if (p.y > H + p.sprite.size / 2) p.y = -p.sprite.size / 2;
+    }
     for (let l = 0; l < LAYERS.length; l++) {
       const sp = LAYERS[l].speed * sm;
       const arr = this.stars[l];
@@ -324,7 +159,7 @@ export class Background {
         s.tw += dt * 3;
         if (s.y > H) {
           s.y -= H;
-          s.x = rand(0, this.W);
+          s.x = rand(0, W);
         }
       }
     }
@@ -334,7 +169,7 @@ export class Background {
       s.tw += dt * 2;
       if (s.y > H + 20) {
         s.y = -20;
-        s.x = rand(0, this.W);
+        s.x = rand(0, W);
       }
     }
     for (let i = 0; i < this.rocks.length; i++) {
@@ -343,7 +178,16 @@ export class Background {
       r.rot += r.vr * dt;
       if (r.y > H + 30) {
         r.y = -30;
-        r.x = rand(0, this.W);
+        r.x = rand(0, W);
+      }
+    }
+    for (let i = 0; i < this.motes.length; i++) {
+      const m = this.motes[i];
+      m.y += m.speed * sm * dt;
+      m.x += m.drift * dt;
+      if (m.y > H + 8) {
+        m.y = -8;
+        m.x = rand(0, W);
       }
     }
     for (let i = 0; i < this.dust.length; i++) {
@@ -351,7 +195,7 @@ export class Background {
       d.y += d.speed * sm * dt;
       if (d.y > H + d.len) {
         d.y = -d.len;
-        d.x = rand(0, this.W);
+        d.x = rand(0, W);
       }
     }
   }
@@ -363,18 +207,22 @@ export class Background {
     ctx.drawImage(this.base, 0, 0, W, H);
     ctx.drawImage(this.nebula, 0, y, W, H);
     ctx.drawImage(this.nebula, 0, y - H, W, H);
-    const p = this.planet;
-    ctx.drawImage(p.canvas, this.theme.planet.x * W - p.size / 2, this.planetY - p.size / 2, p.size, p.size);
+    for (let i = 0; i < this.pieces.length; i++) {
+      const p = this.pieces[i];
+      const s = p.sprite.size;
+      ctx.drawImage(p.sprite.canvas, p.x * W - s / 2, p.y - s / 2, s, s);
+    }
 
     // tiny stars
     ctx.fillStyle = this.theme.star;
+    const stretch = 1 + (this.speedMul - 1) * 3;
     for (let l = 0; l < LAYERS.length; l++) {
       const L = LAYERS[l];
       const arr = this.stars[l];
       for (let i = 0; i < arr.length; i++) {
         const s = arr[i];
         ctx.globalAlpha = L.alpha * (0.6 + 0.4 * Math.sin(s.tw));
-        ctx.fillRect(s.x, s.y, L.size, L.size * (1 + (this.speedMul - 1) * 3));
+        ctx.fillRect(s.x, s.y, L.size, L.size * stretch);
       }
     }
     // bright glowing stars with cross flares
@@ -383,13 +231,13 @@ export class Background {
     for (let i = 0; i < this.bright.length; i++) {
       const s = this.bright[i];
       const k = 0.55 + 0.45 * Math.sin(s.tw);
-      ctx.globalAlpha = 0.85 * k;
+      ctx.globalAlpha = 0.8 * k;
       const f = s.s * (0.8 + k * 0.4);
       ctx.drawImage(fl.canvas, s.x - f / 2, s.y - f / 2, f, f);
     }
     ctx.globalCompositeOperation = 'source-over';
     // asteroids (dim + small: scenery, never mistaken for enemies)
-    ctx.globalAlpha = 0.55;
+    ctx.globalAlpha = 0.6;
     for (let i = 0; i < this.rocks.length; i++) {
       const r = this.rocks[i];
       const sp = this.rockSprites[r.k];
@@ -399,8 +247,17 @@ export class Background {
       ctx.drawImage(sp.canvas, -r.r, -r.r, r.r * 2, r.r * 2);
       ctx.restore();
     }
+    // foreground motes: soft, tiny, low alpha
+    ctx.globalCompositeOperation = 'lighter';
+    const mg = glowSprite(this.scene.mote, 8);
+    for (let i = 0; i < this.motes.length; i++) {
+      const m = this.motes[i];
+      ctx.globalAlpha = m.a;
+      ctx.drawImage(mg.canvas, m.x - m.s / 2, m.y - m.s / 2, m.s, m.s * stretch);
+    }
+    ctx.globalCompositeOperation = 'source-over';
     // speed dust
-    ctx.globalAlpha = 0.25;
+    ctx.globalAlpha = 0.22;
     ctx.strokeStyle = this.theme.dust;
     ctx.lineWidth = 1;
     ctx.beginPath();
