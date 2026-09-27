@@ -349,7 +349,8 @@ export class Game {
     if (crit) {
       this.run.crits++;
       this.score.addRaw(CONFIG.SCORE.critBonus * this.combo.mult);
-      this.texts.spawn('CRIT ' + Math.round(dmg), x, y - 10, '#fff275', 17, 0.75, -70);
+      const ct = this.texts.spawn('CRIT ' + Math.round(dmg), x, y - 10, '#fff275', 17, 0.75, -70);
+      if (ct) ct.style = 1;
       this.audio.play('crit');
     } else {
       this.texts.spawn(String(Math.round(dmg)), x + (Math.random() * 10 - 5), y - 6, '#ffffff', 11, 0.5, -60);
@@ -391,7 +392,8 @@ export class Game {
     this.score.addRaw(crit ? CONFIG.SCORE.critBonus * 2 : 2);
     if (crit) {
       this.run.crits++;
-      this.texts.spawn('CRIT ' + Math.round(dmg), x, y - 10, '#fff275', 18, 0.75, -70);
+      const ct = this.texts.spawn('CRIT ' + Math.round(dmg), x, y - 10, '#fff275', 18, 0.75, -70);
+      if (ct) ct.style = 1;
       this.audio.play('crit');
     } else {
       // throttle boss numbers so a 5-stream weapon stays readable
@@ -716,7 +718,7 @@ export class Game {
     ctx.drawImage(fl.canvas, x - 16, y + 24, 14, 28 * f);
     ctx.drawImage(fl.canvas, x + 2, y + 24, 14, 28 * f);
     ctx.globalCompositeOperation = 'source-over';
-    const sp = shipSprite(3);
+    const sp = shipSprite(1);
     ctx.save();
     ctx.translate(x, y);
     ctx.rotate(Math.cos(t * 0.8) * 0.08);

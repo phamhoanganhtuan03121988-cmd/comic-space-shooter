@@ -1,5 +1,6 @@
-import { ellipse, shade, star, hexA, makeCanvas, whiteVersion } from './Sprites.js';
+import { ellipse, shade, star, hexA, makeCanvas, whiteVersion, glowSprite } from './Sprites.js';
 import { TAU } from '../core/math.js';
+import { cel, rim, spec, emissive, seam, INK } from './Paint.js';
 
 // Boss artwork, split for quality AND speed:
 //   base(ctx, phase)  detailed static body, rendered ONCE per phase into a
@@ -38,34 +39,20 @@ function metal(ctx, x0, x1, dark = '#3f4775', light = '#d5dcff') {
   return g;
 }
 
-// Cheap neon stroke for per-frame parts: wide faint + medium + bright core.
-function glowPath(ctx, pathFn, color, width) {
-  ctx.globalCompositeOperation = 'lighter';
-  ctx.strokeStyle = color;
-  ctx.globalAlpha = 0.18;
-  ctx.lineWidth = width * 3;
-  pathFn();
-  ctx.stroke();
-  ctx.globalAlpha = 0.5;
-  ctx.lineWidth = width * 1.6;
-  ctx.stroke();
-  ctx.globalAlpha = 1;
-  ctx.strokeStyle = '#ffffff';
-  ctx.lineWidth = width * 0.45;
-  ctx.stroke();
-  ctx.globalCompositeOperation = 'source-over';
+// Glow blob without touching the blend mode (for batched additive passes).
+function glowAt(ctx, x, y, r, color, a) {
+  const g = glowSprite(color, 16);
+  ctx.globalAlpha = a;
+  ctx.drawImage(g.canvas, x - r, y - r, r * 2, r * 2);
 }
 
+// Glow blob from the cached sprite (no gradient allocation per frame).
 function glowDot(ctx, x, y, r, color, a = 1) {
+  const g = glowSprite(color, 16);
   ctx.globalCompositeOperation = 'lighter';
-  const g = ctx.createRadialGradient(x, y, 0, x, y, r);
-  g.addColorStop(0, 'rgba(255,255,255,' + a + ')');
-  g.addColorStop(0.3, hexA(color, 0.9 * a));
-  g.addColorStop(1, hexA(color, 0));
-  ctx.fillStyle = g;
-  ctx.beginPath();
-  ctx.arc(x, y, r, 0, TAU);
-  ctx.fill();
+  ctx.globalAlpha = a;
+  ctx.drawImage(g.canvas, x - r, y - r, r * 2, r * 2);
+  ctx.globalAlpha = 1;
   ctx.globalCompositeOperation = 'source-over';
 }
 
@@ -545,104 +532,252 @@ export const BOSS_ART = {
   },
 
   // ------------------------------------------------------------ JELLYTRON
+  // UFO-jellyfish hybrid: heavy metal saucer with a light rim, tall glass
+  // dome holding a glowing brain, shaded neon tentacles with glowing tips.
   jellytron: {
-    box: [240, 190],
+    box: [250, 200],
     oy: -18,
-    halo: '#43e6ff',
+    halo: '#ff4fd8',
     back(ctx, b) {
-      // neon tentacles with glowing tips
-      for (let i = 0; i < 10; i++) {
-        const x0 = -63 + i * 14;
-        const sw = Math.sin(b.t * 2.4 + i * 0.7) * 15;
-        const sw2 = Math.sin(b.t * 3.1 + i) * 11;
-        const len = 104 + (i % 3) * 10;
-        const col = i % 2 ? '#43e6ff' : '#ff4fd8';
-        glowPath(
-          ctx,
-          () => {
-            ctx.beginPath();
-            ctx.moveTo(x0, 30);
-            ctx.bezierCurveTo(x0 + sw, 58, x0 - sw2, 82, x0 + sw * 0.8, len);
-          },
-          col,
-          3
-        );
-        glowDot(ctx, x0 + sw * 0.8, len, 7, col, 0.9);
+      const n = TENTACLES;
+      const pts = TENT_PTS;
+      // 1) sample every tentacle's centre line once
+      for (let i = 0; i < n; i++) {
+        const u = i / (n - 1);
+        const x0 = -64 + u * 128;
+        const len = 92 + Math.sin(i * 2.3) * 14 + (1 - Math.abs(u - 0.5) * 2) * 16;
+        const ph = b.t * 2.3 + i * 0.75;
+        for (let k = 0; k < TENT_SEG; k++) {
+          const v = k / (TENT_SEG - 1);
+          const o = (i * TENT_SEG + k) * 2;
+          pts[o] = x0 + x0 * 0.25 * v + Math.sin(ph + v * 3.2) * 12 * v;
+          pts[o + 1] = 38 + v * len;
+        }
       }
+      // 2) neon glow: one additive stroke per colour group
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = 0.22;
+      ctx.lineWidth = 13;
+      for (let grp = 0; grp < 2; grp++) {
+        ctx.strokeStyle = grp === 0 ? '#ff4fd8' : '#9d5cff';
+        ctx.beginPath();
+        for (let i = grp; i < n; i += 2) {
+          for (let k = 0; k < TENT_SEG; k++) {
+            const o = (i * TENT_SEG + k) * 2;
+            if (k === 0) ctx.moveTo(pts[o], pts[o + 1]);
+            else ctx.lineTo(pts[o], pts[o + 1]);
+          }
+        }
+        ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+      ctx.globalCompositeOperation = 'source-over';
+      // 3) shaded tapered ribbons + highlight + glowing tip
+      for (let i = 0; i < n; i++) {
+        const pink = i % 2 === 0;
+        const base = i * TENT_SEG * 2;
+        ctx.beginPath();
+        for (let k = 0; k < TENT_SEG; k++) {
+          const w = 7 * (1 - (k / (TENT_SEG - 1)) * 0.7);
+          const o = base + k * 2;
+          if (k === 0) ctx.moveTo(pts[o] - w, pts[o + 1]);
+          else ctx.lineTo(pts[o] - w, pts[o + 1]);
+        }
+        for (let k = TENT_SEG - 1; k >= 0; k--) {
+          const w = 7 * (1 - (k / (TENT_SEG - 1)) * 0.7);
+          const o = base + k * 2;
+          ctx.lineTo(pts[o] + w, pts[o + 1]);
+        }
+        ctx.closePath();
+        ctx.fillStyle = pink ? '#ff4fd8' : '#9d5cff';
+        ctx.fill();
+        ctx.strokeStyle = INK;
+        ctx.lineWidth = 1.6;
+        ctx.stroke();
+        ctx.strokeStyle = pink ? '#ffc2f2' : '#d9c2ff';
+        ctx.beginPath();
+        for (let k = 0; k < TENT_SEG - 1; k++) {
+          const w = 7 * (1 - (k / (TENT_SEG - 1)) * 0.7) * 0.45;
+          const o = base + k * 2;
+          if (k === 0) ctx.moveTo(pts[o] - w, pts[o + 1]);
+          else ctx.lineTo(pts[o] - w, pts[o + 1]);
+        }
+        ctx.stroke();
+      }
+      // 4) glowing tips, one additive batch
+      ctx.globalCompositeOperation = 'lighter';
+      for (let i = 0; i < n; i++) {
+        const o = (i * TENT_SEG + TENT_SEG - 1) * 2;
+        glowAt(ctx, pts[o], pts[o + 1], 12, i % 2 === 0 ? '#ff4fd8' : '#9d5cff', 0.9);
+      }
+      ctx.globalAlpha = 1;
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      for (let i = 0; i < n; i++) {
+        const o = (i * TENT_SEG + TENT_SEG - 1) * 2;
+        ctx.moveTo(pts[o] + 2.6, pts[o + 1]);
+        ctx.arc(pts[o], pts[o + 1], 2.6, 0, TAU);
+      }
+      ctx.fill();
     },
     base(ctx) {
-      // saucer ring
-      const rg = ctx.createLinearGradient(0, 8, 0, 44);
-      rg.addColorStop(0, '#c9d1f2');
-      rg.addColorStop(0.5, '#6f7a99');
-      rg.addColorStop(1, '#2f3558');
-      ctx.fillStyle = rg;
-      ctx.strokeStyle = OUT;
-      ctx.lineWidth = 3;
-      ellipse(ctx, 0, 26, 92, 22);
-      ctx.fill();
-      ctx.stroke();
-      ctx.fillStyle = '#262c52';
-      ellipse(ctx, 0, 32, 70, 11);
-      ctx.fill();
-      neon(ctx, '#43e6ff', 12);
-      ctx.strokeStyle = '#7ff3ff';
-      ctx.lineWidth = 2;
+      // --- underside hull + core socket
+      const under = (c) => {
+        c.beginPath();
+        c.ellipse(0, 36, 58, 20, 0, 0, TAU);
+      };
+      cel(ctx, under, '#8c95c9', '#454d85', '#1f2450', { off: 3, hi: 0.5, hiAt: [-10, 34], line: 2.6 });
+      for (let i = -2; i <= 2; i++) seam(ctx, [[i * 18, 22], [i * 22, 52]]);
+      ctx.fillStyle = '#0d0f24';
       ctx.beginPath();
-      ctx.ellipse(0, 26, 88, 19, 0, 0.1, Math.PI - 0.1);
-      ctx.stroke();
-      plain(ctx);
-      // dome glass
-      const g = ctx.createRadialGradient(-24, -52, 8, 0, -18, 92);
-      g.addColorStop(0, 'rgba(235,255,255,0.97)');
-      g.addColorStop(0.45, 'rgba(90,210,255,0.8)');
-      g.addColorStop(1, 'rgba(90,50,200,0.92)');
-      ctx.fillStyle = g;
-      ctx.strokeStyle = OUT;
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.moveTo(-80, 20);
-      ctx.bezierCurveTo(-86, -82, 86, -82, 80, 20);
-      ctx.quadraticCurveTo(0, 34, -80, 20);
-      ctx.closePath();
+      ctx.ellipse(0, 48, 15, 7, 0, 0, TAU);
       ctx.fill();
-      ctx.stroke();
-      // brain
-      const bg = ctx.createRadialGradient(-12, -34, 3, 0, -22, 44);
-      bg.addColorStop(0, '#ffe0f0');
-      bg.addColorStop(0.6, '#ff8fc6');
-      bg.addColorStop(1, '#c2408a');
-      ctx.fillStyle = bg;
-      ctx.strokeStyle = '#8a1f5a';
-      ctx.lineWidth = 2;
-      ellipse(ctx, 0, -24, 44, 29);
-      ctx.fill();
-      ctx.stroke();
+      // --- saucer disc
+      const disc = (c) => {
+        c.beginPath();
+        c.ellipse(0, 22, 104, 26, 0, 0, TAU);
+      };
+      cel(ctx, disc, '#f0f3ff', '#a9b2e0', '#4e5690', { off: 4, hi: 0.62, hiAt: [-20, 12], line: 3 });
+      rim(ctx, disc, 'rgba(255,255,255,0.85)', 1.6, 1.5);
+      // rim band with light sockets (lights are lit per frame)
+      ctx.strokeStyle = '#262b58';
+      ctx.lineWidth = 7;
       ctx.beginPath();
-      for (let i = -3; i <= 3; i++) {
-        ctx.moveTo(i * 10, -50);
-        ctx.quadraticCurveTo(i * 10 + 7, -26, i * 10, 0);
+      ctx.ellipse(0, 24, 96, 20, 0, 0.12, Math.PI - 0.12);
+      ctx.stroke();
+      ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.ellipse(0, 21, 96, 20, 0, 0.12, Math.PI - 0.12);
+      ctx.stroke();
+      for (let i = 0; i < JELLY_LIGHTS; i++) {
+        const a = 0.25 + (i / (JELLY_LIGHTS - 1)) * (Math.PI - 0.5);
+        ctx.fillStyle = '#0d0f24';
+        ctx.beginPath();
+        ctx.arc(Math.cos(a) * 96, 24 + Math.sin(a) * 20, 3.6, 0, TAU);
+        ctx.fill();
       }
+      // top plate ring around the dome
+      const collar = (c) => {
+        c.beginPath();
+        c.ellipse(0, 12, 82, 15, 0, 0, TAU);
+      };
+      cel(ctx, collar, '#ffffff', '#cfd5f2', '#7a82b8', { off: 2, hi: 0.6, hiAt: [-14, 8], line: 2.4 });
+      // neon magenta trim
+      emissive(ctx, (c) => {
+        c.beginPath();
+        c.ellipse(0, 12, 78, 12.5, 0, 0.05, Math.PI - 0.05);
+        c.ellipse(0, 13.5, 78, 12, 0, Math.PI - 0.05, 0.05, true);
+        c.closePath();
+      }, '#ff4fd8', '#ffffff', 12);
+      // --- glass dome (back wall)
+      const dome = (c) => {
+        c.beginPath();
+        c.moveTo(-74, 10);
+        c.bezierCurveTo(-84, -112, 84, -112, 74, 10);
+        c.quadraticCurveTo(0, 20, -74, 10);
+        c.closePath();
+      };
+      const dg = ctx.createRadialGradient(-20, -50, 10, 0, -20, 95);
+      dg.addColorStop(0, 'rgba(190,250,255,0.9)');
+      dg.addColorStop(0.45, 'rgba(90,200,255,0.75)');
+      dg.addColorStop(0.8, 'rgba(80,90,230,0.85)');
+      dg.addColorStop(1, 'rgba(90,30,170,0.95)');
+      dome(ctx);
+      ctx.fillStyle = dg;
+      ctx.fill();
+      // --- brain (glowing magenta, folded)
+      const brain = (c) => {
+        c.beginPath();
+        c.moveTo(-54, -2);
+        c.bezierCurveTo(-66, -76, 66, -76, 54, -2);
+        c.quadraticCurveTo(0, 9, -54, -2);
+        c.closePath();
+      };
+      ctx.save();
+      ctx.shadowColor = '#ff4fd8';
+      ctx.shadowBlur = 22;
+      cel(ctx, brain, '#ffe6f8', '#ff7ad6', '#c02596', { off: 4, hi: 0.55, hiAt: [-14, -36], line: 2.4, outline: false });
+      ctx.restore();
+      brain(ctx);
+      ctx.strokeStyle = '#6a0d52';
+      ctx.lineWidth = 2.2;
       ctx.stroke();
-      // glass reflections
-      gloss(ctx, -46, -40, 16, 7, -0.8, 0.6);
-      gloss(ctx, 44, -30, 5, 12, 0.5, 0.25);
+      ctx.save();
+      brain(ctx);
+      ctx.clip();
+      ctx.strokeStyle = 'rgba(120,10,90,0.6)';
+      ctx.lineWidth = 2;
+      for (let i = -3; i <= 3; i++) {
+        ctx.beginPath();
+        ctx.moveTo(i * 15, -58);
+        ctx.bezierCurveTo(i * 15 + 10, -40, i * 15 - 10, -20, i * 15 + 4, 2);
+        ctx.stroke();
+      }
+      ctx.strokeStyle = 'rgba(255,220,245,0.7)';
+      ctx.lineWidth = 1;
+      for (let i = -3; i <= 3; i++) {
+        ctx.beginPath();
+        ctx.moveTo(i * 15 - 2.5, -56);
+        ctx.bezierCurveTo(i * 15 + 7.5, -38, i * 15 - 12.5, -18, i * 15 + 1.5, 2);
+        ctx.stroke();
+      }
+      ctx.restore();
+      // --- glass front: rim, reflections
+      dome(ctx);
+      ctx.strokeStyle = INK;
+      ctx.lineWidth = 3;
+      ctx.stroke();
+      rim(ctx, dome, 'rgba(200,250,255,0.9)', 2.4, 2.2);
+      // broad glossy reflection band + sharp streaks
+      ctx.save();
+      dome(ctx);
+      ctx.clip();
+      ctx.strokeStyle = 'rgba(255,255,255,0.28)';
+      ctx.lineWidth = 14;
+      ctx.beginPath();
+      ctx.arc(8, 8, 76, Math.PI * 1.08, Math.PI * 1.42);
+      ctx.stroke();
+      ctx.strokeStyle = 'rgba(255,255,255,0.9)';
+      ctx.lineWidth = 3.5;
+      ctx.beginPath();
+      ctx.arc(8, 8, 74, Math.PI * 1.12, Math.PI * 1.36);
+      ctx.stroke();
+      ctx.restore();
+      spec(ctx, -30, -74, 10, 2.4, -1.1, 0.8);
+      spec(ctx, 58, -26, 20, 3.2, 0.42, 0.4);
     },
     front(ctx, b) {
-      // chasing rim lights
-      for (let i = 0; i < 12; i++) {
-        const a = (i / 12) * TAU + b.t * 1.6;
-        if (Math.sin(a) < -0.05) continue;
-        const x = Math.cos(a) * 80;
-        const y = 26 + Math.sin(a) * 17;
-        const on = (Math.floor(b.t * 8) + i) % 3 === 0;
-        glowDot(ctx, x, y, on ? 9 : 6, on ? '#fff275' : b.rage > 0 ? '#ff4f5e' : '#43e6ff', on ? 1 : 0.8);
+      // chasing rim lights: bulbs, then one additive glow batch
+      const step = Math.floor(b.t * 9);
+      for (let i = 0; i < JELLY_LIGHTS; i++) {
+        const a = 0.25 + (i / (JELLY_LIGHTS - 1)) * (Math.PI - 0.5);
+        const on = (step + i) % 4 === 0;
+        ctx.fillStyle = on ? '#fff275' : b.rage > 0 ? '#ff4f5e' : i % 2 ? '#43e6ff' : '#ff4fd8';
+        ctx.beginPath();
+        ctx.arc(Math.cos(a) * 96, 24 + Math.sin(a) * 20, 3, 0, TAU);
+        ctx.fill();
       }
-      // brain pulse + core eye
-      glowDot(ctx, 0, -24, 40 + Math.sin(b.t * 3) * 4, b.rage > 0 ? '#ff4f7a' : '#ff9ad5', 0.25);
-      const k = 0.6 + 0.4 * Math.sin(b.t * 5);
-      glowDot(ctx, 0, 12, 24, b.rage > 0 ? '#ff4f5e' : '#43e6ff', 0.6 + k * 0.4);
-      chargeGlow(ctx, 0, 60, 28, '#43e6ff', b.charge);
+      ctx.globalCompositeOperation = 'lighter';
+      for (let i = 0; i < JELLY_LIGHTS; i++) {
+        const a = 0.25 + (i / (JELLY_LIGHTS - 1)) * (Math.PI - 0.5);
+        const on = (step + i) % 4 === 0;
+        const c = on ? '#fff275' : b.rage > 0 ? '#ff4f5e' : i % 2 ? '#43e6ff' : '#ff4fd8';
+        glowAt(ctx, Math.cos(a) * 96, 24 + Math.sin(a) * 20, on ? 11 : 7, c, on ? 1 : 0.7);
+      }
+      // brain pulse + underside core
+      const k = 0.5 + 0.5 * Math.sin(b.t * 3.2);
+      glowAt(ctx, 0, -26, 46, b.rage > 0 ? '#ff2e6e' : '#ff4fd8', 0.18 + k * 0.14);
+      const kc = 0.6 + 0.4 * Math.sin(b.t * 5);
+      glowAt(ctx, 0, 48, 20, b.rage > 0 ? '#ff4f5e' : '#43e6ff', 0.7 + kc * 0.3);
+      ctx.globalAlpha = 1;
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.ellipse(0, 48, 5, 2.6, 0, 0, TAU);
+      ctx.fill();
+      chargeGlow(ctx, 0, 60, 30, '#ff4fd8', b.charge);
     },
   },
 
@@ -864,6 +999,13 @@ export const BOSS_ART = {
 };
 
 const VOID_COLORS = ['#b27dff', '#ff5ec8', '#ff4f5e', '#ffb13d'];
+
+// Jellytron: rim light count + reusable tentacle sample buffer (no per-frame
+// allocations).
+const JELLY_LIGHTS = 11;
+const TENTACLES = 10;
+const TENT_SEG = 9;
+const TENT_PTS = new Float32Array(TENTACLES * TENT_SEG * 2);
 
 // -------------------------------------------------------------- cache
 // Only the bosses currently on screen are kept (big canvases), keyed by

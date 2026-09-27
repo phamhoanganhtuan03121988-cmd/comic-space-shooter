@@ -1,7 +1,7 @@
 import { CONFIG } from '../data/config.js';
 import { BUFF_IDS } from '../data/items.js';
 import { clamp } from '../core/math.js';
-import { shipSprite, shipWhite, shipTier, flameSprite, flameCoreSprite, shieldBubbleSprite } from '../art/ShipArt.js';
+import { shipSprite, shipWhite, shipTier, flameSprite, flameCoreSprite, shieldBubbleSprite, FLAME_POINTS } from '../art/ShipArt.js';
 import { glowSprite } from '../art/Sprites.js';
 import { computeStats } from './PlayerStats.js';
 
@@ -129,16 +129,18 @@ export class Player {
     const f1 = 0.8 + Math.random() * 0.4 + boost;
     const f2 = 0.8 + Math.random() * 0.4 + boost;
     ctx.globalCompositeOperation = 'lighter';
-    ctx.drawImage(fl.canvas, x - 16, y + 24, 14, 26 * f1);
-    ctx.drawImage(fl.canvas, x + 2, y + 24, 14, 26 * f2);
-    ctx.drawImage(core.canvas, x - 12, y + 24, 6, 15 * f1);
-    ctx.drawImage(core.canvas, x + 6, y + 24, 6, 15 * f2);
+    for (let i = 0; i < FLAME_POINTS.length; i++) {
+      const fp = FLAME_POINTS[i];
+      const k = fp[2] * (i % 2 ? f2 : f1);
+      ctx.drawImage(fl.canvas, x + fp[0] - 7 * fp[2], y + fp[1] - 3, 14 * fp[2], 28 * k);
+      ctx.drawImage(core.canvas, x + fp[0] - 3 * fp[2], y + fp[1] - 3, 6 * fp[2], 16 * k);
+    }
     const glow = glowSprite('#ff7a3d', 16);
     ctx.globalAlpha = 0.55;
     ctx.drawImage(glow.canvas, x - 24, y + 16, 48, 34);
     ctx.globalAlpha = 1;
     ctx.globalCompositeOperation = 'source-over';
-    if (fx && Math.random() < 0.5) fx.engineTrail(x + (Math.random() < 0.5 ? -9 : 9), y + 38);
+    if (fx && Math.random() < 0.5) fx.engineTrail(x + (Math.random() < 0.5 ? -6.5 : 6.5), y + 40);
 
     // ship with banking (horizontal squash) + slight rotation; look follows weapon power
     const tier = shipTier(this.power);
@@ -155,10 +157,10 @@ export class Player {
       const m = glowSprite('#9ff9ff', 16);
       ctx.globalCompositeOperation = 'lighter';
       ctx.globalAlpha = this.muzzle / 0.06;
-      ctx.drawImage(m.canvas, x - 13, y - 44, 26, 26);
+      ctx.drawImage(m.canvas, x - 13, y - 48, 26, 26);
       ctx.globalAlpha *= 0.7;
-      ctx.drawImage(m.canvas, x - 34, y - 12, 16, 16);
-      ctx.drawImage(m.canvas, x + 18, y - 12, 16, 16);
+      ctx.drawImage(m.canvas, x - 42, y - 6, 16, 16);
+      ctx.drawImage(m.canvas, x + 26, y - 6, 16, 16);
       ctx.globalAlpha = 1;
       ctx.globalCompositeOperation = 'source-over';
     }

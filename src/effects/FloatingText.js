@@ -5,7 +5,7 @@ import { Pool } from '../core/Pool.js';
 export const FONT_STACK = '"Trebuchet MS", "Segoe UI", "Arial Rounded MT Bold", system-ui, sans-serif';
 
 function makeText() {
-  return { alive: false, x: 0, y: 0, vy: 0, life: 0, maxLife: 1, text: '', color: '#fff', size: 14, pop: 0, stroke: '#1b1033' };
+  return { alive: false, x: 0, y: 0, vy: 0, life: 0, maxLife: 1, text: '', color: '#fff', size: 14, pop: 0, stroke: '#1b1033', style: 0 };
 }
 
 export class FloatingText {
@@ -30,6 +30,7 @@ export class FloatingText {
     t.color = color;
     t.size = size;
     t.pop = 1;
+    t.style = 0;
     return t;
   }
 
@@ -70,6 +71,21 @@ export class FloatingText {
       const size = Math.round(t.size * (1 + t.pop * 0.5));
       ctx.globalAlpha = Math.min(1, k * 2.5);
       ctx.font = this.font(size);
+      if (t.style === 1) {
+        // comic CRIT: tilted, thick dark-red outline, two-tone orange/yellow fill
+        ctx.save();
+        ctx.translate(t.x, t.y);
+        ctx.rotate(-0.12);
+        ctx.lineWidth = Math.max(3, size * 0.34);
+        ctx.strokeStyle = '#4a0a00';
+        ctx.strokeText(t.text, 0, 0);
+        ctx.fillStyle = '#ff6a1f';
+        ctx.fillText(t.text, 0, 0);
+        ctx.fillStyle = '#ffe14d';
+        ctx.fillText(t.text, 0, -size * 0.12);
+        ctx.restore();
+        continue;
+      }
       ctx.lineWidth = Math.max(2, size * 0.22);
       ctx.strokeStyle = t.stroke;
       ctx.strokeText(t.text, t.x, t.y);

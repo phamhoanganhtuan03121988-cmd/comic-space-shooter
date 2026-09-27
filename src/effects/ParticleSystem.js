@@ -1,15 +1,16 @@
 import { Pool } from '../core/Pool.js';
-import { glowSprite, flareSprite, fireSprite, smokeSprite } from '../art/Sprites.js';
+import { glowSprite, flareSprite, fireSprite, smokeSprite, burstSprite, puffSprite, beamSprite } from '../art/Sprites.js';
 import { rand, TAU } from '../core/math.js';
 
 // Lightweight pooled particles. Kinds:
 //   glow   additive soft dot (sprite)        spark  additive streak along velocity
 //   ring   expanding stroked circle          debris rotating chunk (normal blend)
 //   smoke  growing translucent puff          flare  4-point lens star (additive)
-//   fire   expanding fireball core (additive)
+//   fire   expanding fireball core (additive)   burst  cartoon starburst
+//   puff   cartoon fire-cloud puff               beam   vertical light column (additive)
 // `quality` (0.35..1) scales spawn counts when the frame rate drops.
 
-const KIND = { glow: 0, spark: 1, ring: 2, debris: 3, smoke: 4, flare: 5, fire: 6 };
+const KIND = { glow: 0, spark: 1, ring: 2, debris: 3, smoke: 4, flare: 5, fire: 6, burst: 7, puff: 8, beam: 9 };
 
 function makeParticle() {
   return {
@@ -50,9 +51,9 @@ export class ParticleSystem {
     p.life = life;
     p.maxLife = life;
     p.size = size;
-    p.endSize = opts && opts.endSize !== undefined ? opts.endSize : kind === 'ring' || kind === 'smoke' || kind === 'fire' ? size * 3 : 0;
+    p.endSize = opts && opts.endSize !== undefined ? opts.endSize : kind === 'ring' || kind === 'smoke' || kind === 'fire' ? size * 3 : kind === 'burst' || kind === 'puff' ? size * 1.8 : 0;
     p.color = color;
-    p.sprite = p.kind === 0 ? glowSprite(color, 16) : p.kind === 5 ? flareSprite(color) : p.kind === 6 ? fireSprite(color) : p.kind === 4 ? smokeSprite() : null;
+    p.sprite = p.kind === 0 ? glowSprite(color, 16) : p.kind === 5 ? flareSprite(color) : p.kind === 6 ? fireSprite(color) : p.kind === 4 ? smokeSprite() : p.kind === 7 ? burstSprite(color) : p.kind === 8 ? puffSprite(color) : p.kind === 9 ? beamSprite(color) : null;
     p.drag = opts && opts.drag !== undefined ? opts.drag : 2;
     p.gravity = opts && opts.gravity ? opts.gravity : 0;
     p.rot = rand(0, TAU);
@@ -95,9 +96,24 @@ export class ParticleSystem {
     // pass 1: normal blending (debris, smoke)
     for (let i = 0; i < a.length; i++) {
       const p = a[i];
-      if (p.kind !== 3 && p.kind !== 4) continue;
+      if (p.kind !== 3 && p.kind !== 4 && p.kind !== 7 && p.kind !== 8) continue;
       const k = p.life / p.maxLife;
-      if (p.kind === 3) {
+      if (p.kind === 7 || p.kind === 8) {
+        // pop in fast, then shrink/fade (burst) or keep swelling (puff)
+        const t = 1 - k;
+        const grow = t < 0.25 ? t / 0.25 : 1;
+        const s = (p.size + (p.endSize - p.size) * (p.kind === 8 ? t : grow)) * (p.kind === 7 ? 1 - Math.max(0, t - 0.5) : 1) * 2;
+        ctx.globalAlpha = Math.min(1, k * 2.2);
+        if (p.kind === 8) {
+          ctx.drawImage(p.sprite.canvas, p.x - s / 2, p.y - s / 2, s, s);
+        } else {
+          ctx.save();
+          ctx.translate(p.x, p.y);
+          ctx.rotate(p.rot);
+          ctx.drawImage(p.sprite.canvas, -s / 2, -s / 2, s, s);
+          ctx.restore();
+        }
+      } else if (p.kind === 3) {
         ctx.globalAlpha = Math.min(1, k * 2);
         ctx.fillStyle = p.color;
         ctx.save();
@@ -141,6 +157,11 @@ export class ParticleSystem {
         const s = (p.size + (p.endSize - p.size) * (1 - k * k)) * 2;
         ctx.globalAlpha = k;
         ctx.drawImage(p.sprite.canvas, p.x - s / 2, p.y - s / 2, s, s);
+      } else if (p.kind === 9) {
+        const t = 1 - k;
+        const hgt = p.size * (0.4 + Math.min(1, t * 4) * 0.6) * 2;
+        ctx.globalAlpha = k;
+        ctx.drawImage(p.sprite.canvas, p.x - p.size / 4, p.y - hgt * 0.75, p.size / 2, hgt);
       } else if (p.kind === 2) {
         const s = p.size + (p.endSize - p.size) * (1 - k);
         ctx.globalAlpha = k;

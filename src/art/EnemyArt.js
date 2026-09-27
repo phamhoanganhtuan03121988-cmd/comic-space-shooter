@@ -1,5 +1,6 @@
 import { makeSprite, cached, whiteVersion, ellipse, shade, hexA, makeCanvas, SPR } from './Sprites.js';
 import { TAU } from '../core/math.js';
+import { cel, rim, spec, emissive, dot, INK as PINK } from './Paint.js';
 
 // Original cartoon space critters, "neon arcade" style: lit gradients, glossy
 // highlights, expressive eyes and glowing accents. Each sprite is rendered
@@ -126,80 +127,138 @@ const ART = {
     ctx.stroke();
   },
 
-  // Fuzzy neon bee with big glossy compound eyes and glowing veined wings.
+  // Robotic space bee: black armoured helmet with a halo antenna, two big
+  // glowing lens eyes, amber banded abdomen, two pairs of neon wings.
   zipfly(ctx, f) {
-    const wa = [-0.55, -0.15, 0.2][f];
+    const flap = [-0.5, -0.12, 0.25][f];
+    const wing = (rx, ry) => (c) => {
+      c.beginPath();
+      c.moveTo(0, 0);
+      c.bezierCurveTo(rx * 0.35, -ry * 1.1, rx * 1.05, -ry * 0.9, rx, -ry * 0.15);
+      c.bezierCurveTo(rx * 0.95, ry * 0.45, rx * 0.4, ry * 0.5, 0, 0);
+      c.closePath();
+    };
     for (const sx of [-1, 1]) {
-      ctx.save();
-      ctx.scale(sx, 1);
-      ctx.rotate(wa);
-      neon(ctx, '#5ef3ff', 6);
-      ctx.fillStyle = 'rgba(190,245,255,0.55)';
-      ctx.strokeStyle = 'rgba(120,230,255,0.95)';
-      ctx.lineWidth = 1.3;
-      ellipse(ctx, 12, -7, 10, 5.5, -0.35);
-      ctx.fill();
-      ctx.stroke();
-      plain(ctx);
-      ctx.strokeStyle = 'rgba(255,255,255,0.6)';
-      ctx.lineWidth = 0.7;
-      ctx.beginPath();
-      ctx.moveTo(4, -4);
-      ctx.lineTo(19, -9);
-      ctx.moveTo(8, -5);
-      ctx.lineTo(15, -3);
-      ctx.stroke();
-      ctx.restore();
-    }
-    body(ctx, '#ffcf2e', () => ellipse(ctx, 0, 2, 10.5, 12));
-    // fuzz / stripes
-    ctx.fillStyle = OUT;
-    ctx.beginPath();
-    ctx.ellipse(0, 5, 10, 2.2, 0, 0, TAU);
-    ctx.ellipse(0, 10, 7.8, 1.9, 0, 0, TAU);
-    ctx.fill();
-    ctx.strokeStyle = 'rgba(255,240,170,0.8)';
-    ctx.lineWidth = 1;
-    for (let i = -3; i <= 3; i++) {
-      ctx.beginPath();
-      ctx.moveTo(i * 3, -9);
-      ctx.lineTo(i * 3.4, -11);
-      ctx.stroke();
+      for (const [len, h, rot, a] of [
+        [15, 8, -0.35, 0.5],
+        [19, 10, -0.75, 0.7],
+      ]) {
+        ctx.save();
+        ctx.scale(sx, 1);
+        ctx.translate(6, -2);
+        ctx.rotate(rot + flap);
+        const shape = wing(len, h);
+        // translucent membrane
+        const g = ctx.createLinearGradient(0, 0, len, 0);
+        g.addColorStop(0, 'rgba(60,220,255,' + a * 0.75 + ')');
+        g.addColorStop(1, 'rgba(150,245,255,' + a + ')');
+        ctx.shadowColor = '#43e6ff';
+        ctx.shadowBlur = 9;
+        shape(ctx);
+        ctx.fillStyle = g;
+        ctx.fill();
+        ctx.shadowBlur = 0;
+        // neon edge + veins
+        ctx.strokeStyle = '#b8fbff';
+        ctx.lineWidth = 1.3;
+        shape(ctx);
+        ctx.stroke();
+        ctx.strokeStyle = 'rgba(255,255,255,0.55)';
+        ctx.lineWidth = 0.7;
+        ctx.beginPath();
+        ctx.moveTo(1, 0);
+        ctx.quadraticCurveTo(len * 0.5, -h * 0.4, len * 0.9, -h * 0.2);
+        ctx.moveTo(len * 0.35, -h * 0.25);
+        ctx.lineTo(len * 0.55, h * 0.12);
+        ctx.stroke();
+        ctx.restore();
+      }
     }
     // stinger
-    ctx.fillStyle = OUT;
+    cel(ctx, (c) => {
+      c.beginPath();
+      c.moveTo(-3.2, 14);
+      c.lineTo(0, 21.5);
+      c.lineTo(3.2, 14);
+      c.closePath();
+    }, '#8b92c9', '#3b4270', '#1d2148', { off: 0.8, hi: 0, line: 1.4 });
+    // abdomen (amber armour)
+    const abdomen = (c) => ellipse(c, 0, 5, 12.5, 11.5);
+    cel(ctx, abdomen, '#fff1a0', '#ffc21a', '#c86a00', { off: 2.4, hi: 0.5, hiAt: [-3, 5], line: 2 });
+    ctx.save();
+    abdomen(ctx);
+    ctx.clip();
+    ctx.fillStyle = '#1b1636';
     ctx.beginPath();
-    ctx.moveTo(-2.5, 13);
-    ctx.lineTo(0, 19);
-    ctx.lineTo(2.5, 13);
+    ctx.ellipse(0, 6, 14, 1.5, 0, 0, TAU);
+    ctx.ellipse(0, 11.5, 14, 1.4, 0, 0, TAU);
     ctx.fill();
-    // antennae
-    ctx.strokeStyle = OUT;
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    ctx.moveTo(-3, -9);
-    ctx.quadraticCurveTo(-7, -15, -9, -14);
-    ctx.moveTo(3, -9);
-    ctx.quadraticCurveTo(7, -15, 9, -14);
+    ctx.restore();
+    abdomen(ctx);
+    ctx.strokeStyle = PINK;
+    ctx.lineWidth = 2;
     ctx.stroke();
-    // compound eyes
+    spec(ctx, -7.5, 7, 6, 1.6, 0.5, 0.8);
+    // antenna stalk + glowing halo ring
+    ctx.strokeStyle = PINK;
+    ctx.lineWidth = 2.2;
+    ctx.beginPath();
+    ctx.moveTo(0, -12);
+    ctx.lineTo(0, -16.5);
+    ctx.stroke();
+    ctx.save();
+    ctx.shadowColor = '#43e6ff';
+    ctx.shadowBlur = 8;
+    ctx.strokeStyle = '#7ff3ff';
+    ctx.lineWidth = 2.2;
+    ellipse(ctx, 0, -19, 5, 2.4);
+    ctx.stroke();
+    ctx.restore();
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 0.8;
+    ctx.beginPath();
+    ctx.ellipse(0, -19, 5, 2.4, 0, Math.PI * 1.1, Math.PI * 1.7);
+    ctx.stroke();
+    // helmet (black armour)
+    const helmet = (c) => {
+      c.beginPath();
+      c.moveTo(-12, -3);
+      c.bezierCurveTo(-12.5, -15, 12.5, -15, 12, -3);
+      c.quadraticCurveTo(11.5, 1.5, 7, 1.8);
+      c.lineTo(-7, 1.8);
+      c.quadraticCurveTo(-11.5, 1.5, -12, -3);
+      c.closePath();
+    };
+    cel(ctx, helmet, '#5a5f8f', '#2a2d52', '#11122a', { off: 2, hi: 0.5, hiAt: [-3, -8], line: 2 });
+    rim(ctx, helmet, 'rgba(160,190,255,0.7)', 1.2, 1);
+    spec(ctx, -6, -9, 5, 1.4, -0.9, 0.7);
+    // big glowing lens eyes
     for (const sx of [-1, 1]) {
-      const g = ctx.createRadialGradient(sx * 4.5 - 1.5, -6, 0.5, sx * 4.5, -4, 5.5);
-      g.addColorStop(0, '#9ff3ff');
-      g.addColorStop(0.5, '#2b8cff');
-      g.addColorStop(1, '#1a2b7a');
-      ctx.fillStyle = g;
-      ctx.strokeStyle = OUT;
-      ctx.lineWidth = 1.5;
-      ellipse(ctx, sx * 4.8, -4, 4.6, 5.4);
-      ctx.fill();
-      ctx.stroke();
-      ctx.fillStyle = '#fff';
+      const ex = sx * 5.2;
+      const ey = -5;
+      ctx.fillStyle = '#0a0b1e';
       ctx.beginPath();
-      ctx.arc(sx * 4.8 - 1.4, -6, 1.4, 0, TAU);
+      ctx.arc(ex, ey, 5.1, 0, TAU);
       ctx.fill();
+      emissive(ctx, (c) => {
+        c.beginPath();
+        c.arc(ex, ey, 3.9, 0, TAU);
+      }, '#2fd6ff', null, 10);
+      const lg = ctx.createRadialGradient(ex - 1, ey - 1, 0.3, ex, ey, 3.9);
+      lg.addColorStop(0, '#ffffff');
+      lg.addColorStop(0.35, '#b8fbff');
+      lg.addColorStop(1, '#1a8cff');
+      ctx.fillStyle = lg;
+      ctx.beginPath();
+      ctx.arc(ex, ey, 3.7, 0, TAU);
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(10,40,90,0.7)';
+      ctx.lineWidth = 0.7;
+      ctx.beginPath();
+      ctx.arc(ex, ey, 2.2, 0, TAU);
+      ctx.stroke();
+      dot(ctx, ex - 1.4, ey - 1.5, 1.1, 1);
     }
-    gloss(ctx, -5, 1, 2, 3, -0.4, 0.45);
   },
 
   // Armoured crystal beetle: dark violet shell with glowing crystal spikes.

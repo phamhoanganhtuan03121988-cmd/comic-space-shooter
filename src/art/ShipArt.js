@@ -1,267 +1,260 @@
 import { makeSprite, cached, whiteVersion, hexA, ellipse } from './Sprites.js';
+import { cel, rim, spec, emissive, seam, poly, INK, setLightX } from './Paint.js';
 import { TAU } from '../core/math.js';
 
-// "Starhopper" — the player's original fighter: glossy white hull, red swept
-// wings with glowing blue wingtips, chrome trims and a big cyan bubble
-// cockpit. Three visual tiers follow weapon power (1-2, 3-4, 5): extra wing
-// pods and gold trims. Everything is drawn once into cached sprites (glow is
-// baked with shadowBlur at cache time, never per frame).
+// "Starhopper" — the player's fighter, polished arcade style: long pointed
+// nose, forward bubble canopy, wide swept blade wings with glowing leading
+// edges, canards, twin main engines + two wing engines. Hard cel-shaded
+// white hull with coloured armour panels; the colour scheme follows weapon
+// power (LV1 red, LV2 blue, LV3 green, LV4 gold). Everything is drawn once
+// into cached sprites.
 
-const OUT = '#16122e';
-const SIZE = 76; // sprite box (hull fits in ~60, rest is glow padding)
+const SIZE_W = 86;
+const SIZE_H = 80;
 
-function glowStroke(ctx, color, blur) {
-  ctx.shadowColor = color;
-  ctx.shadowBlur = blur;
-}
+export const SHIP_TIERS = [1, 2, 3, 4];
 
-function noGlow(ctx) {
-  ctx.shadowBlur = 0;
-  ctx.shadowColor = 'transparent';
-}
+const SCHEMES = {
+  1: { light: '#ff8a96', mid: '#e8283f', dark: '#9c0f28', glow: '#3fb6ff', trim: '#b8ecff' },
+  2: { light: '#8fb5ff', mid: '#2f6bff', dark: '#1a3a9c', glow: '#5ef3ff', trim: '#d6fbff' },
+  3: { light: '#9dffc4', mid: '#22c267', dark: '#0f7a3e', glow: '#b8ff3d', trim: '#efffd0' },
+  4: { light: '#fff0a0', mid: '#ffb31a', dark: '#b36b00', glow: '#ff6ad5', trim: '#ffe0f6' },
+};
 
-function wing(ctx, tier) {
-  // main wing
-  const wg = ctx.createLinearGradient(6, -6, 26, 20);
-  wg.addColorStop(0, '#ff5a6a');
-  wg.addColorStop(0.55, '#e0213f');
-  wg.addColorStop(1, '#8e0f2a');
-  ctx.fillStyle = wg;
+// Engine exhaust points [x, y, size] (used by Player.render / menu).
+export const FLAME_POINTS = [
+  [-6.5, 27, 1],
+  [6.5, 27, 1],
+  [-22.5, 25, 0.62],
+  [22.5, 25, 0.62],
+];
+
+const HULL = { light: '#ffffff', mid: '#e8e6f7', dark: '#9d99c9' };
+
+// --- shapes (right half; left half is mirrored) ---------------------------
+const fuselage = (ctx) => {
   ctx.beginPath();
-  ctx.moveTo(6, -8);
-  ctx.lineTo(28, 9);
-  ctx.quadraticCurveTo(31, 16, 27, 20);
-  ctx.lineTo(9, 17);
+  ctx.moveTo(0, -34);
+  ctx.bezierCurveTo(4, -30, 7.5, -20, 8.5, -8);
+  ctx.lineTo(9.5, 6);
+  ctx.quadraticCurveTo(9.5, 20, 5, 25);
+  ctx.lineTo(-5, 25);
+  ctx.quadraticCurveTo(-9.5, 20, -9.5, 6);
+  ctx.lineTo(-8.5, -8);
+  ctx.bezierCurveTo(-7.5, -20, -4, -30, 0, -34);
   ctx.closePath();
-  ctx.fill();
-  ctx.stroke();
-  // leading edge highlight
-  ctx.strokeStyle = 'rgba(255,255,255,0.75)';
-  ctx.lineWidth = 1.4;
+};
+
+// swept arrowhead blade
+const wingR = poly([
+  [7, -8],
+  [21, 3],
+  [36, 16],
+  [35.5, 22],
+  [25, 19],
+  [11, 17],
+]);
+
+// second, rear blade layered under the main wing
+const tailR = poly([
+  [8, 10],
+  [22, 19],
+  [28, 28],
+  [21, 27.5],
+  [8, 22],
+]);
+
+const wingEdgeR = poly([
+  [8.4, -6.3],
+  [35.6, 15.3],
+  [35.4, 17.8],
+  [8.1, -3.2],
+]);
+
+const tailEdgeR = poly([
+  [9, 11],
+  [27.6, 26.6],
+  [27, 28],
+  [9, 13.4],
+]);
+
+const canardR = poly([
+  [6.5, -17],
+  [15, -9],
+  [14.5, -5.5],
+  [7.5, -9],
+]);
+
+const noseCap = (ctx) => {
   ctx.beginPath();
-  ctx.moveTo(8, -5.5);
-  ctx.lineTo(26, 8.5);
-  ctx.stroke();
-  // white stripe + panel line
-  ctx.fillStyle = '#f4f2ff';
-  ctx.beginPath();
-  ctx.moveTo(11, 5);
-  ctx.lineTo(23, 13);
-  ctx.lineTo(22, 15.5);
-  ctx.lineTo(10.5, 9);
+  ctx.moveTo(0, -34);
+  ctx.bezierCurveTo(3.5, -30.5, 5.5, -26, 6, -22.5);
+  ctx.quadraticCurveTo(0, -24.5, -6, -22.5);
+  ctx.bezierCurveTo(-5.5, -26, -3.5, -30.5, 0, -34);
   ctx.closePath();
-  ctx.fill();
-  ctx.strokeStyle = 'rgba(40,0,20,0.45)';
-  ctx.lineWidth = 0.8;
+};
+
+const canopy = (ctx) => {
   ctx.beginPath();
-  ctx.moveTo(13, 1);
-  ctx.lineTo(15, 16);
-  ctx.stroke();
-  // wingtip cannon with glowing blue light
-  ctx.strokeStyle = OUT;
-  ctx.lineWidth = 1.8;
-  const cg = ctx.createLinearGradient(24, 0, 29, 0);
-  cg.addColorStop(0, '#d8e2ff');
-  cg.addColorStop(1, '#6f7fb8');
-  ctx.fillStyle = cg;
-  ctx.beginPath();
-  ctx.roundRect ? ctx.roundRect(24, -1, 5, 17, 2.5) : ctx.rect(24, -1, 5, 17);
-  ctx.fill();
-  ctx.stroke();
-  glowStroke(ctx, '#3fb6ff', 8);
-  ctx.fillStyle = '#7fd8ff';
-  ctx.beginPath();
-  ctx.arc(26.5, 11, 2.2, 0, TAU);
-  ctx.fill();
-  noGlow(ctx);
-  if (tier >= 2) {
-    // extra missile pod under the wing
-    ctx.strokeStyle = OUT;
-    ctx.lineWidth = 1.6;
-    ctx.fillStyle = '#3d4a80';
+  ctx.moveTo(0, -23);
+  ctx.bezierCurveTo(4.2, -19.5, 4.6, -11, 3.4, -6);
+  ctx.quadraticCurveTo(0, -3.5, -3.4, -6);
+  ctx.bezierCurveTo(-4.6, -11, -4.2, -19.5, 0, -23);
+  ctx.closePath();
+};
+
+function rr(x, y, w, h, r) {
+  return (ctx) => {
     ctx.beginPath();
-    ctx.roundRect ? ctx.roundRect(16, 14, 6, 12, 3) : ctx.rect(16, 14, 6, 12);
-    ctx.fill();
-    ctx.stroke();
-    ctx.fillStyle = '#ffd23f';
-    ctx.fillRect(17.2, 15, 3.6, 2);
-  }
-  if (tier >= 3) {
-    // gold trim fin
-    ctx.fillStyle = '#ffd23f';
-    ctx.strokeStyle = OUT;
-    ctx.lineWidth = 1.4;
-    ctx.beginPath();
-    ctx.moveTo(20, 4);
-    ctx.lineTo(30, -6);
-    ctx.lineTo(27, 6);
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
     ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
-  }
+  };
+}
+
+function mirrored(ctx, fn) {
+  ctx.save();
+  fn(1);
+  ctx.restore();
+  ctx.save();
+  ctx.scale(-1, 1);
+  setLightX(1); // keep the light coming from the screen's left
+  fn(-1);
+  setLightX(-1);
+  ctx.restore();
 }
 
 function drawShip(ctx, tier) {
+  const C = SCHEMES[tier] || SCHEMES[1];
   ctx.lineJoin = 'round';
-  // soft cyan aura baked behind the silhouette
-  const aura = ctx.createRadialGradient(0, 2, 8, 0, 2, 36);
-  aura.addColorStop(0, 'rgba(90,200,255,0.28)');
-  aura.addColorStop(1, 'rgba(90,200,255,0)');
+  ctx.lineCap = 'round';
+
+  // soft under-glow in the scheme's accent colour
+  const aura = ctx.createRadialGradient(0, 4, 6, 0, 4, 40);
+  aura.addColorStop(0, hexA(C.glow, 0.22));
+  aura.addColorStop(1, hexA(C.glow, 0));
   ctx.fillStyle = aura;
   ctx.beginPath();
-  ctx.arc(0, 2, 36, 0, TAU);
+  ctx.arc(0, 4, 40, 0, TAU);
   ctx.fill();
 
-  ctx.strokeStyle = OUT;
-  ctx.lineWidth = 2;
+  // rear blades + wing engines (behind the main wings)
+  mirrored(ctx, () => {
+    cel(ctx, tailR, C.light, C.mid, C.dark, { off: 1.6, hi: 0.45, hiAt: [16, 18], line: 1.8 });
+    emissive(ctx, tailEdgeR, C.glow, '#ffffff', 8);
+    cel(ctx, rr(19.5, 13, 6, 12, 2.5), '#e6ebff', '#8f98c9', '#4a5288', { off: 1.4, hi: 0.4, hiAt: [22.5, 18], line: 1.6 });
+    ctx.fillStyle = '#2a2f5c';
+    ctx.fillRect(20.4, 22.5, 4.2, 2.5);
+    if (tier >= 2) {
+      // under-wing missile pod
+      cel(ctx, rr(28, 18, 4.6, 11, 2.3), '#ffffff', '#d0d4f0', '#7b82b3', { off: 1.1, hi: 0.4, hiAt: [30, 23], line: 1.4 });
+      ctx.fillStyle = C.mid;
+      ctx.beginPath();
+      ctx.moveTo(28.4, 19.5);
+      ctx.lineTo(30.3, 15.5);
+      ctx.lineTo(32.2, 19.5);
+      ctx.fill();
+    }
+  });
 
-  // engine pods + glowing nozzles
-  for (const sx of [-1, 1]) {
-    const pg = ctx.createLinearGradient(sx * 9 - 5, 0, sx * 9 + 5, 0);
-    pg.addColorStop(0, '#46528a');
-    pg.addColorStop(0.5, '#9aa6d8');
-    pg.addColorStop(1, '#3a4478');
-    ctx.fillStyle = pg;
-    ctx.beginPath();
-    ctx.roundRect ? ctx.roundRect(sx * 9 - 5, 10, 10, 16, 3.5) : ctx.rect(sx * 9 - 5, 10, 10, 16);
-    ctx.fill();
-    ctx.stroke();
-    glowStroke(ctx, '#ff9b3d', 8);
-    ctx.fillStyle = '#ffb35e';
-    ellipse(ctx, sx * 9, 26, 3.6, 1.8);
-    ctx.fill();
-    noGlow(ctx);
-  }
+  // main wings: coloured armour blades with glowing leading edge
+  mirrored(ctx, () => {
+    cel(ctx, wingR, C.light, C.mid, C.dark, { off: 2.2, hi: 0.5, hiAt: [21, 7], line: 2.1 });
+    rim(ctx, wingR, 'rgba(255,255,255,0.7)', 1.2, 1);
+    // white chevron stripe + panel seams
+    cel(ctx, poly([[12, 5.5], [30, 17.5], [28.5, 19.2], [11.2, 9]]), '#ffffff', '#ebe9f8', '#b1add6', { off: 0.8, hi: 0, line: 1 });
+    seam(ctx, [[15, -0.5], [17, 17]]);
+    seam(ctx, [[25, 8.5], [26.5, 19]]);
+    emissive(ctx, wingEdgeR, C.glow, '#ffffff', 10);
+    // wingtip cannon with glowing muzzle light
+    cel(ctx, rr(33, 6, 4.6, 18, 2.2), '#ffffff', '#c8cdea', '#6f77a8', { off: 1.2, hi: 0.4, hiAt: [35, 13], line: 1.5 });
+    emissive(ctx, (c) => ellipse(c, 35.3, 8, 1.6, 2.2), C.glow, '#ffffff', 8);
+    if (tier >= 4) {
+      // gold tail fins
+      cel(ctx, poly([[14, 19], [22, 31], [17, 31], [11, 22]]), '#fff6c2', '#ffd23f', '#b36b00', { off: 1, hi: 0.5, hiAt: [16, 25], line: 1.4 });
+    }
+    cel(ctx, canardR, C.light, C.mid, C.dark, { off: 1.2, hi: 0.5, hiAt: [11, -9], line: 1.6 });
+  });
 
-  // wings
-  for (const sx of [-1, 1]) {
-    ctx.save();
-    ctx.scale(sx, 1);
-    ctx.strokeStyle = OUT;
-    ctx.lineWidth = 2;
-    wing(ctx, tier);
-    ctx.restore();
-  }
+  // main engines
+  mirrored(ctx, () => {
+    cel(ctx, rr(3.2, 11, 7, 16, 3), '#eef1ff', '#99a2d4', '#4e568f', { off: 1.5, hi: 0.45, hiAt: [6.5, 18], line: 1.7 });
+    ctx.fillStyle = '#2a2f5c';
+    ctx.fillRect(4.2, 24, 5, 3);
+  });
 
-  // fuselage (glossy white, cool shading on the right)
-  ctx.strokeStyle = OUT;
-  ctx.lineWidth = 2.2;
-  const g = ctx.createLinearGradient(-13, 0, 13, 0);
-  g.addColorStop(0, '#ffffff');
-  g.addColorStop(0.35, '#f3f1ff');
-  g.addColorStop(0.75, '#c3c0ee');
-  g.addColorStop(1, '#8e8ad0');
-  ctx.fillStyle = g;
-  ctx.beginPath();
-  ctx.moveTo(0, -30);
-  ctx.bezierCurveTo(9, -25, 13, -6, 12.5, 12);
-  ctx.quadraticCurveTo(11.5, 22, 0, 23);
-  ctx.quadraticCurveTo(-11.5, 22, -12.5, 12);
-  ctx.bezierCurveTo(-13, -6, -9, -25, 0, -30);
-  ctx.closePath();
+  // fuselage (hard-shaded white hull)
+  cel(ctx, fuselage, HULL.light, HULL.mid, HULL.dark, { off: 2.6, hi: 0.5, hiAt: [-2, -6], line: 2.2 });
+  rim(ctx, fuselage, 'rgba(255,255,255,0.95)', 1.3, 1.2);
+  // coloured armour stripes down the hull
+  mirrored(ctx, () => {
+    cel(ctx, poly([[5.5, -14], [8.6, -6], [9.4, 8], [6.2, 10], [4.4, -4]]), C.light, C.mid, C.dark, { off: 1, hi: 0.5, hiAt: [7, -2], line: 1.2 });
+  });
+  // nose cap
+  cel(ctx, noseCap, C.light, C.mid, C.dark, { off: 1.4, hi: 0.5, hiAt: [0, -29], line: 1.8 });
+  spec(ctx, -1.8, -28, 6, 1.6, 0.2, 0.9);
+  // panel seams
+  seam(ctx, [[-8.6, 3], [8.6, 3]]);
+  seam(ctx, [[-8.8, 13], [8.8, 13]]);
+  seam(ctx, [[0, 3], [0, 23]]);
+
+  // canopy: dark frame + cyan glass with big reflection
+  ctx.save();
+  ctx.translate(0, 0.8);
+  ctx.scale(1.18, 1.1);
+  ctx.translate(0, -0.8);
+  canopy(ctx);
+  ctx.fillStyle = INK;
   ctx.fill();
-  ctx.stroke();
-
-  // red nose cone
-  const ng = ctx.createLinearGradient(-8, -30, 8, -18);
-  ng.addColorStop(0, '#ff6d7a');
-  ng.addColorStop(1, '#c4152f');
-  ctx.fillStyle = ng;
-  ctx.beginPath();
-  ctx.moveTo(0, -30);
-  ctx.bezierCurveTo(5, -27.5, 7.5, -22, 8, -17.5);
-  ctx.quadraticCurveTo(0, -20.5, -8, -17.5);
-  ctx.bezierCurveTo(-7.5, -22, -5, -27.5, 0, -30);
-  ctx.fill();
-  // blue belly stripe
-  ctx.fillStyle = '#2f7dff';
-  ctx.beginPath();
-  ctx.moveTo(-3, 5);
-  ctx.lineTo(3, 5);
-  ctx.lineTo(2, 20);
-  ctx.lineTo(-2, 20);
-  ctx.closePath();
-  ctx.fill();
-  // chrome highlight down the left side
-  ctx.strokeStyle = 'rgba(255,255,255,0.95)';
-  ctx.lineWidth = 1.6;
-  ctx.beginPath();
-  ctx.moveTo(-6, -20);
-  ctx.quadraticCurveTo(-10, -4, -9.5, 12);
-  ctx.stroke();
-  // panel lines
-  ctx.strokeStyle = 'rgba(40,30,90,0.35)';
-  ctx.lineWidth = 0.8;
-  ctx.beginPath();
-  ctx.moveTo(-11, 8);
-  ctx.lineTo(11, 8);
-  ctx.moveTo(-10, 15);
-  ctx.lineTo(10, 15);
-  ctx.stroke();
-
-  // cockpit: layered glass with reflections
-  ctx.strokeStyle = OUT;
-  ctx.lineWidth = 2;
-  const cg = ctx.createRadialGradient(-2, -9, 1, 0, -4, 11);
-  cg.addColorStop(0, '#eaffff');
+  ctx.restore();
+  const cg = ctx.createLinearGradient(-4, -22, 4, -5);
+  cg.addColorStop(0, '#dcffff');
   cg.addColorStop(0.35, '#5ef3ff');
-  cg.addColorStop(0.8, '#1a74d6');
-  cg.addColorStop(1, '#0c2f7a');
+  cg.addColorStop(0.75, '#1a7ad8');
+  cg.addColorStop(1, '#0b2c78');
+  canopy(ctx);
   ctx.fillStyle = cg;
-  ellipse(ctx, 0, -5, 7, 10.5);
   ctx.fill();
-  ctx.stroke();
-  ctx.fillStyle = 'rgba(255,255,255,0.9)';
-  ellipse(ctx, -2.6, -9.5, 1.9, 3.6, -0.3);
-  ctx.fill();
-  ctx.strokeStyle = 'rgba(255,255,255,0.55)';
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.arc(0, -5, 5.2, 0.3, 1.3);
-  ctx.stroke();
+  spec(ctx, -1.6, -15, 10, 2, 0.08, 0.95);
+  spec(ctx, 1.8, -9, 4, 0.9, 0.15, 0.55);
 
-  // glowing belly core + running lights
-  glowStroke(ctx, '#ffd23f', 8);
-  ctx.fillStyle = '#ffe680';
-  ctx.beginPath();
-  ctx.arc(0, 11, 2.6, 0, TAU);
-  ctx.fill();
-  glowStroke(ctx, '#5ef3ff', 6);
-  ctx.fillStyle = '#b8fbff';
-  ctx.beginPath();
-  ctx.arc(-6, 2, 1.2, 0, TAU);
-  ctx.arc(6, 2, 1.2, 0, TAU);
-  ctx.fill();
-  noGlow(ctx);
+  // emissive details: belly core + running lights
+  emissive(ctx, (c) => ellipse(c, 0, 16.5, 2.3, 3.4), '#ffd23f', '#ffffff', 9);
+  emissive(ctx, (c) => ellipse(c, -6.8, -2, 0.9, 1.6), C.glow, null, 6);
+  emissive(ctx, (c) => ellipse(c, 6.8, -2, 0.9, 1.6), C.glow, null, 6);
 }
 
-// tier: 1 (power 1-2), 2 (power 3-4), 3 (power 5)
+// Map weapon power 1..5 to the four looks.
 export function shipTier(power) {
-  return power >= 5 ? 3 : power >= 3 ? 2 : 1;
+  return power >= 5 ? 4 : power >= 4 ? 3 : power >= 3 ? 2 : 1;
 }
 
 export function shipSprite(tier = 1) {
-  return cached('ship:' + tier, () => makeSprite(SIZE, SIZE, (ctx) => drawShip(ctx, tier)));
+  return cached('ship2:' + tier, () => makeSprite(SIZE_W, SIZE_H, (ctx) => drawShip(ctx, tier)));
 }
 
 export function shipWhite(tier = 1) {
-  return cached('shipWhite:' + tier, () => whiteVersion(shipSprite(tier)));
+  return cached('shipWhite2:' + tier, () => whiteVersion(shipSprite(tier)));
 }
 
-// Engine flame, outer cone: stretched vertically at runtime for flicker.
+// Engine flame (outer cone), stretched vertically at runtime for flicker.
 export function flameSprite() {
-  return cached('flame', () =>
-    makeSprite(16, 34, (ctx) => {
-      const g = ctx.createLinearGradient(0, -17, 0, 17);
-      g.addColorStop(0, '#fff6c8');
-      g.addColorStop(0.2, '#ffcf4a');
-      g.addColorStop(0.55, '#ff6a3d');
-      g.addColorStop(1, hexA('#ff2e88', 0));
+  return cached('flame2', () =>
+    makeSprite(16, 36, (ctx) => {
+      const g = ctx.createLinearGradient(0, -18, 0, 18);
+      g.addColorStop(0, '#fff8d6');
+      g.addColorStop(0.18, '#ffd23f');
+      g.addColorStop(0.5, '#ff7a1f');
+      g.addColorStop(0.8, hexA('#ff2e6e', 0.55));
+      g.addColorStop(1, hexA('#ff2e6e', 0));
       ctx.fillStyle = g;
       ctx.beginPath();
-      ctx.moveTo(-7, -17);
-      ctx.quadraticCurveTo(-6, 5, 0, 17);
-      ctx.quadraticCurveTo(6, 5, 7, -17);
+      ctx.moveTo(-7, -18);
+      ctx.bezierCurveTo(-7.5, -4, -3, 8, 0, 18);
+      ctx.bezierCurveTo(3, 8, 7.5, -4, 7, -18);
       ctx.closePath();
       ctx.fill();
     })
@@ -270,7 +263,7 @@ export function flameSprite() {
 
 // White-hot inner core of the flame (drawn additively on top of the cone).
 export function flameCoreSprite() {
-  return cached('flameCore', () =>
+  return cached('flameCore2', () =>
     makeSprite(8, 22, (ctx) => {
       const g = ctx.createLinearGradient(0, -11, 0, 11);
       g.addColorStop(0, '#ffffff');
@@ -299,7 +292,6 @@ export function shieldBubbleSprite() {
       ctx.beginPath();
       ctx.arc(0, 0, 40, 0, TAU);
       ctx.fill();
-      // hex energy pattern
       ctx.strokeStyle = 'rgba(160,250,255,0.35)';
       ctx.lineWidth = 1;
       for (let i = 0; i < 6; i++) {
