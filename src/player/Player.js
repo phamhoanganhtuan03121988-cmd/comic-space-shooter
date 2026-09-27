@@ -6,6 +6,8 @@ import { glowSprite } from '../art/Sprites.js';
 import { computeStats } from './PlayerStats.js';
 
 const PC = CONFIG.PLAYER;
+// Visual-only scale of the ship art (hitboxes come from CONFIG.PLAYER).
+const SHIP_SCALE = 1.12;
 
 // The player's fighter. Movement follows the drag delta with a speed cap so it
 // feels glued to the finger yet still smooth; keyboard adds a direct axis.
@@ -131,16 +133,19 @@ export class Player {
     ctx.globalCompositeOperation = 'lighter';
     for (let i = 0; i < FLAME_POINTS.length; i++) {
       const fp = FLAME_POINTS[i];
-      const k = fp[2] * (i % 2 ? f2 : f1);
-      ctx.drawImage(fl.canvas, x + fp[0] - 7 * fp[2], y + fp[1] - 3, 14 * fp[2], 28 * k);
-      ctx.drawImage(core.canvas, x + fp[0] - 3 * fp[2], y + fp[1] - 3, 6 * fp[2], 16 * k);
+      const sz = fp[2] * SHIP_SCALE;
+      const k = sz * (i % 2 ? f2 : f1);
+      const fx = x + fp[0] * SHIP_SCALE;
+      const fy = y + fp[1] * SHIP_SCALE - 3;
+      ctx.drawImage(fl.canvas, fx - 7 * sz, fy, 14 * sz, 28 * k);
+      ctx.drawImage(core.canvas, fx - 3 * sz, fy, 6 * sz, 16 * k);
     }
     const glow = glowSprite('#ff7a3d', 16);
     ctx.globalAlpha = 0.55;
-    ctx.drawImage(glow.canvas, x - 24, y + 16, 48, 34);
+    ctx.drawImage(glow.canvas, x - 27, y + 18, 54, 38);
     ctx.globalAlpha = 1;
     ctx.globalCompositeOperation = 'source-over';
-    if (fx && Math.random() < 0.5) fx.engineTrail(x + (Math.random() < 0.5 ? -6.5 : 6.5), y + 40);
+    if (fx && Math.random() < 0.5) fx.engineTrail(x + (Math.random() < 0.5 ? -7.3 : 7.3), y + 45);
 
     // ship with banking (horizontal squash) + slight rotation; look follows weapon power
     const tier = shipTier(this.power);
@@ -148,7 +153,7 @@ export class Player {
     ctx.save();
     ctx.translate(x, y);
     ctx.rotate(this.tilt * 0.12);
-    ctx.scale(1 - Math.abs(this.tilt) * 0.18, 1);
+    ctx.scale((1 - Math.abs(this.tilt) * 0.18) * SHIP_SCALE, SHIP_SCALE);
     ctx.drawImage(s.canvas, -s.w / 2, -s.h / 2, s.w, s.h);
     ctx.restore();
 
@@ -157,10 +162,10 @@ export class Player {
       const m = glowSprite('#9ff9ff', 16);
       ctx.globalCompositeOperation = 'lighter';
       ctx.globalAlpha = this.muzzle / 0.06;
-      ctx.drawImage(m.canvas, x - 13, y - 48, 26, 26);
+      ctx.drawImage(m.canvas, x - 13, y - 53, 26, 26);
       ctx.globalAlpha *= 0.7;
-      ctx.drawImage(m.canvas, x - 42, y - 6, 16, 16);
-      ctx.drawImage(m.canvas, x + 26, y - 6, 16, 16);
+      ctx.drawImage(m.canvas, x - 47, y - 5, 16, 16);
+      ctx.drawImage(m.canvas, x + 31, y - 5, 16, 16);
       ctx.globalAlpha = 1;
       ctx.globalCompositeOperation = 'source-over';
     }
