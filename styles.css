@@ -96,10 +96,10 @@ body {
   right: calc(var(--u) * 8px);
   width: max(44px, calc(var(--u) * 44px));
   height: max(44px, calc(var(--u) * 44px));
-  border-radius: 50%;
-  border: 2px solid rgba(140, 200, 255, 0.55);
-  background: radial-gradient(circle at 35% 30%, rgba(80, 70, 170, 0.9), rgba(16, 10, 44, 0.9));
-  box-shadow: 0 0 12px rgba(94, 243, 255, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+  border-radius: 12px;
+  border: 1.5px solid rgba(140, 210, 255, 0.6);
+  background: linear-gradient(180deg, rgba(40, 30, 96, 0.9), rgba(10, 6, 30, 0.88));
+  box-shadow: 0 2px 0 rgba(4, 2, 14, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.18);
   display: grid;
   place-items: center;
   cursor: pointer;
@@ -110,13 +110,15 @@ body {
 }
 
 .pause-ico {
-  width: 14px;
-  height: 16px;
-  border-left: 5px solid #fff;
-  border-right: 5px solid #fff;
-  filter: drop-shadow(0 0 3px rgba(94, 243, 255, 0.8));
+  width: max(13px, calc(var(--u) * 13px));
+  height: max(15px, calc(var(--u) * 15px));
+  border-left: max(4.5px, calc(var(--u) * 4.5px)) solid #fff;
+  border-right: max(4.5px, calc(var(--u) * 4.5px)) solid #fff;
+  filter: drop-shadow(0 1px 0 #0c0820);
 }
 
+/* NOVA: premium ultimate button. Same box / touch area as before; the
+   cooldown is a progress ring (--cd = remaining fraction, 1 -> 0). */
 .skill-btn {
   --cd: 0;
   position: absolute;
@@ -125,81 +127,130 @@ body {
   width: max(64px, calc(var(--u) * 78px));
   height: max(64px, calc(var(--u) * 78px));
   border-radius: 50%;
-  border: 3px solid var(--cyan);
-  background: radial-gradient(circle at 50% 35%, rgba(60, 140, 255, 0.55), rgba(10, 20, 60, 0.9) 70%);
+  border: 2px solid #0c0820;
+  background: radial-gradient(circle at 50% 38%, #3a2a8a 0%, #160c44 62%, #0a0624 100%);
   color: #fff;
   font-weight: 900;
   cursor: pointer;
-  overflow: hidden;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 1px;
-  box-shadow: 0 0 18px rgba(94, 243, 255, 0.6), inset 0 0 14px rgba(94, 243, 255, 0.35);
+  box-shadow: 0 3px 0 rgba(4, 2, 14, 0.85), inset 0 2px 0 rgba(255, 255, 255, 0.12);
   transition: transform 0.08s;
+}
+
+.skill-btn::before,
+.skill-btn::after {
+  content: '';
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+/* outer halo (ready only; opacity animation stays on the compositor) */
+.skill-btn::before {
+  inset: -7px;
+  background: radial-gradient(circle, rgba(94, 243, 255, 0) 58%, rgba(94, 243, 255, 0.45) 68%, rgba(94, 243, 255, 0) 80%);
+  opacity: 0;
+}
+
+/* rotating sheen on the ring (ready only) */
+.skill-btn::after {
+  inset: 2px;
+  background: conic-gradient(from 0deg, transparent 0 300deg, rgba(255, 255, 255, 0.95) 340deg, transparent 360deg);
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 5px), #000 calc(100% - 4px));
+  mask: radial-gradient(farthest-side, transparent calc(100% - 5px), #000 calc(100% - 4px));
+  opacity: 0;
 }
 
 .skill-btn:active {
   transform: scale(0.92);
 }
 
+/* progress ring */
 .skill-fill {
   position: absolute;
-  inset: 0;
+  inset: 2px;
   border-radius: 50%;
-  background: conic-gradient(rgba(5, 5, 20, 0.8) calc(var(--cd) * 360deg), transparent 0);
+  background: conic-gradient(var(--cyan) calc((1 - var(--cd)) * 360deg), rgba(255, 255, 255, 0.1) 0);
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 5px), #000 calc(100% - 4px));
+  mask: radial-gradient(farthest-side, transparent calc(100% - 5px), #000 calc(100% - 4px));
+  pointer-events: none;
 }
 
 .skill-ico {
   position: relative;
-  width: max(20px, calc(var(--u) * 24px));
-  height: max(20px, calc(var(--u) * 24px));
-  filter: drop-shadow(0 0 4px #9ff9ff);
+  width: max(22px, calc(var(--u) * 26px));
+  height: max(22px, calc(var(--u) * 26px));
+  filter: drop-shadow(0 0 3px #9ff9ff);
 }
 
 .skill-label {
   position: relative;
   font-family: var(--font-display);
-  font-size: max(11px, calc(var(--u) * 13px));
-  letter-spacing: 1px;
-  text-shadow: 0 2px 0 var(--ink), 0 0 8px rgba(94, 243, 255, 0.8);
+  font-size: max(10px, calc(var(--u) * 12px));
+  letter-spacing: 1.5px;
+  text-shadow: 0 1.5px 0 #0c0820;
 }
 
 .skill-cd {
   position: absolute;
   left: 0;
   right: 0;
-  top: 50%;
+  top: 42%;
   transform: translateY(-50%);
   font-family: var(--font-display);
-  font-size: max(16px, calc(var(--u) * 20px));
-  color: #fff;
-  text-shadow: 0 2px 0 var(--ink), 0 0 6px #000;
+  font-size: max(18px, calc(var(--u) * 22px));
+  color: #dff6ff;
+  text-shadow: 0 2px 0 #0c0820;
+  pointer-events: none;
 }
 
 .skill-btn.ready {
-  animation: skillPulse 1.1s ease-in-out infinite;
-  background: radial-gradient(circle at 50% 35%, rgba(140, 250, 255, 0.75), rgba(30, 90, 200, 0.9) 70%);
+  background: radial-gradient(circle at 50% 34%, #ffffff 0%, #8ff6ff 16%, #1fa8ff 48%, #1a3fc4 78%, #120a52 100%);
 }
 
-.skill-btn.cooling {
-  border-color: rgba(94, 243, 255, 0.35);
-  box-shadow: none;
+.skill-btn.ready .skill-fill {
+  background: conic-gradient(#e8fdff, #5ef3ff, #e8fdff, #5ef3ff, #e8fdff);
 }
 
-.skill-btn.cooling .skill-ico,
+.skill-btn.ready::before {
+  animation: skillHalo 1.2s ease-in-out infinite;
+}
+
+.skill-btn.ready::after {
+  opacity: 1;
+  animation: skillSpin 2.4s linear infinite;
+}
+
+.skill-btn.ready .skill-label {
+  text-shadow: 0 1.5px 0 #0c0820, 0 0 6px rgba(255, 255, 255, 0.7);
+}
+
+.skill-btn.cooling .skill-ico {
+  opacity: 0;
+}
+
 .skill-btn.cooling .skill-label {
-  opacity: 0.35;
+  opacity: 0.5;
+  transform: translateY(calc(var(--u) * 12px));
 }
 
-@keyframes skillPulse {
+@keyframes skillHalo {
   0%,
   100% {
-    box-shadow: 0 0 10px rgba(94, 243, 255, 0.5), inset 0 0 12px rgba(255, 255, 255, 0.3);
+    opacity: 0.35;
   }
   50% {
-    box-shadow: 0 0 30px rgba(94, 243, 255, 1), inset 0 0 18px rgba(255, 255, 255, 0.5);
+    opacity: 1;
+  }
+}
+
+@keyframes skillSpin {
+  to {
+    transform: rotate(360deg);
   }
 }
 

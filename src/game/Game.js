@@ -72,7 +72,7 @@ export class Game {
     this.bg = new Background(this.W, this.H);
     this.particles = new ParticleSystem(CONFIG.POOL.particles);
     this.effects = new Effects(this.particles);
-    this.texts = new FloatingText(CONFIG.POOL.texts);
+    this.texts = new FloatingText(CONFIG.POOL.texts, () => this.W);
     this.shake = new ScreenShake();
     this.shake.enabled = settings.shake;
     this.bullets = new BulletSystem();
@@ -91,12 +91,12 @@ export class Game {
     this.ui = new UIManager(this);
 
     this.combo.onTierUp = (mult) => {
-      this.texts.spawn('COMBO x' + mult + '!', this.W - 70, 150, '#ffd23f', 20, 1, -30);
+      this.hud.comboCallout('COMBO x' + mult + '!', '#ffd23f');
       this.audio.play('combo', mult);
       if (mult >= 4) this.shake.add(0.12);
     };
     this.combo.onBreak = (n) => {
-      if (this.state === STATE.PLAYING) this.texts.spawn('COMBO LOST (' + n + ')', this.W - 80, 150, '#9fb3ff', 12, 0.9, -20);
+      if (this.state === STATE.PLAYING) this.hud.comboCallout('COMBO LOST (' + n + ')', '#9fb3ff');
     };
 
     this.viewport.onResize(() => {
