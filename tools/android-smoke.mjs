@@ -195,7 +195,7 @@ try {
   report.checks.push({ name: 'smoke test crashed', ok: false, detail: String(e && e.stack ? e.stack : e) });
   console.error(e);
   try {
-    report.logcat = execFileSync('adb', ['-s', device.serial(), 'logcat', '-d', '-t', '150', '*:E'], { timeout: 20000 }).toString().split('\n').slice(-150);
+    report.logcat = execFileSync('timeout', ['20', 'adb', '-s', device.serial(), 'logcat', '-d', '-t', '150', '*:E']).toString().split('\n').slice(-150);
   } catch (_) {
     /* ignore */
   }

@@ -89,8 +89,8 @@ jobs:
           cores: 4
           ram-size: 4096M
           disable-animations: true
-          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
-          script: node tools/android-smoke.mjs dist/android/CosmicFarmDefenders-debug.apk; code=$?; adb logcat -d -t 4000 > docs/android/logcat.txt 2>&1; exit $code
+          emulator-options: -no-window -gpu swangle_indirect -noaudio -no-boot-anim -camera-back none
+          script: mkdir -p docs/android; adb logcat -c; (adb logcat -v time > docs/android/logcat.txt 2>&1 &); timeout 12m node tools/android-smoke.mjs dist/android/CosmicFarmDefenders-debug.apk
       - uses: actions/upload-artifact@v4
         if: always()
         with:
