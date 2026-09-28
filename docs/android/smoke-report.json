@@ -53,7 +53,7 @@
       "ok": true,
       "detail": {
         "x": 200,
-        "shots": 6
+        "shots": 7
       }
     },
     {
@@ -61,29 +61,13 @@
       "ok": true,
       "detail": {
         "from": 200,
-        "to": 62
-      }
-    },
-    {
-      "name": "real tap: NOVA fires (cooldown started)",
-      "ok": true,
-      "detail": {
-        "cooldown": 21.9,
-        "tap": {
-          "x": 944,
-          "y": 2257,
-          "screen": [
-            1080,
-            2400
-          ],
-          "dpr": 2.625
-        }
+        "to": 40
       }
     },
     {
       "name": "smoke test crashed",
       "ok": false,
-      "detail": "androidDevice.screenshot: FAIL\n    at shot (/home/runner/work/comic-space-shooter/comic-space-shooter/tools/android-smoke.mjs:59:82)\n    at /home/runner/work/comic-space-shooter/comic-space-shooter/tools/android-smoke.mjs:105:9"
+      "detail": "page.evaluate: Target page, context or browser has been closed\n    at /home/runner/work/comic-space-shooter/comic-space-shooter/tools/android-smoke.mjs:115:25"
     }
   ],
   "errors": [],
@@ -91,6 +75,10 @@
     "model": "sdk_gphone64_x86_64",
     "serial": "emulator-5554"
   },
-  "passed": 10,
-  "total": 11
+  "notes": [
+    "screenshot failed: 01-menu.png",
+    "screenshot failed: 02-gameplay.png"
+  ],
+  "passed": 9,
+  "total": 10
 }
