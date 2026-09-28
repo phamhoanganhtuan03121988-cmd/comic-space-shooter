@@ -1,0 +1,48 @@
+{
+  "apk": "dist/android/CosmicFarmDefenders-debug.apk",
+  "checks": [
+    {
+      "name": "game starts (menu state)",
+      "ok": true,
+      "detail": {
+        "state": "menu",
+        "w": 412,
+        "h": 866,
+        "scrollH": 866,
+        "save": true
+      }
+    },
+    {
+      "name": "portrait orientation even with system rotation forced to landscape",
+      "ok": true,
+      "detail": {
+        "w": 412,
+        "h": 866
+      }
+    },
+    {
+      "name": "no page scroll (content fits the viewport)",
+      "ok": true,
+      "detail": {
+        "scrollH": 866,
+        "h": 866
+      }
+    },
+    {
+      "name": "localStorage available",
+      "ok": true
+    },
+    {
+      "name": "smoke test crashed",
+      "ok": false,
+      "detail": "androidInput.tap: Please install Android driver apk using 'npx playwright install android'\n    at realTap (/home/runner/work/comic-space-shooter/comic-space-shooter/tools/android-smoke.mjs:54:22)\n    at async file:///home/runner/work/comic-space-shooter/comic-space-shooter/tools/android-smoke.mjs:78:3"
+    }
+  ],
+  "errors": [],
+  "device": {
+    "model": "sdk_gphone64_x86_64",
+    "serial": "emulator-5554"
+  },
+  "passed": 4,
+  "total": 5
+}
