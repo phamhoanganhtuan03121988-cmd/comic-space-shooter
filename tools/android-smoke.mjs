@@ -8,6 +8,7 @@
 import { _android as android } from 'playwright';
 import fs from 'node:fs';
 import path from 'node:path';
+import { execFileSync } from 'node:child_process';
 
 const PKG = 'com.cosmicfarm.defenders';
 const apk = process.argv[2] || 'dist/android/CosmicFarmDefenders-debug.apk';
@@ -56,16 +57,18 @@ async function realTap(page, sel) {
   return p;
 }
 
-// screencap on the device + pull (more reliable on emulators than the
-// streamed screenshot); a failed capture never fails the run
-async function shot(name) {
+// plain `adb exec-out screencap` (binary-safe, independent of the Playwright
+// device session); a failed capture never fails the run
+function shot(name) {
   for (let i = 0; i < 3; i++) {
     try {
-      await sh('screencap -p /sdcard/smoke.png');
-      await device.pull('/sdcard/smoke.png', path.join(out, name));
-      return;
+      const png = execFileSync('adb', ['-s', device.serial(), 'exec-out', 'screencap', '-p'], { maxBuffer: 64 * 1024 * 1024 });
+      if (png.length > 1000 && png[0] === 0x89) {
+        fs.writeFileSync(path.join(out, name), png);
+        return;
+      }
     } catch (e) {
-      await sleep(800);
+      /* retry */
     }
   }
   report.notes = (report.notes || []).concat('screenshot failed: ' + name);
@@ -87,7 +90,7 @@ try {
   check('portrait orientation even with system rotation forced to landscape', boot.h > boot.w, { w: boot.w, h: boot.h });
   check('no page scroll (content fits the viewport)', boot.scrollH <= boot.h + 1, { scrollH: boot.scrollH, h: boot.h });
   check('localStorage available', boot.save === true);
-  await shot('01-menu.png');
+  shot('01-menu.png');
 
   // real taps: PLAY -> sector 1
   await realTap(page, '#screen-menu [data-action="play"]');
@@ -108,21 +111,21 @@ try {
   await sleep(500);
   const afterMove = await page.evaluate(() => window.__cfd.player.x);
   check('real touch drag moves the ship', Math.abs(afterMove - before.x) > 25, { from: Math.round(before.x), to: Math.round(afterMove) });
-  await shot('02-gameplay.png');
+  shot('02-gameplay.png');
 
   // NOVA via real tap
   const nova = await realTap(page, '#btn-skill');
   const cd = await page.evaluate(() => window.__cfd.player.skillCooldown);
   check('real tap: NOVA fires (cooldown started)', cd > 0, { cooldown: +cd.toFixed(1), tap: nova });
   await sleep(1200);
-  await shot('03-nova-cooldown.png');
+  shot('03-nova-cooldown.png');
 
   // sector progression: clearing sector 1 unlocks 2 (real game code path)
   await page.evaluate(() => window.__cfd.completeLevel());
   const prog = await page.evaluate(() => ({ state: window.__cfd.state, unlocked: window.__cfd.save.data.unlockedLevel }));
   check('sector clear unlocks the next sector', prog.state === 'victory' && prog.unlocked === 2, prog);
   await sleep(800);
-  await shot('04-victory.png');
+  shot('04-victory.png');
   // mid-campaign progress beyond sector 5, saved through the game's save system
   await page.evaluate(() => {
     const d = window.__cfd.save.data;
@@ -148,7 +151,7 @@ try {
     l.scrollTop = l.scrollHeight;
   });
   await sleep(400);
-  await shot('05-sectors-after-restart.png');
+  shot('05-sectors-after-restart.png');
 
   // start a sector beyond 5 on device
   await page.evaluate(() => (document.getElementById('level-list').scrollTop = 0));
@@ -159,7 +162,7 @@ try {
   check('real tap: sector 9 (expansion) starts', s9.state === 'playing' && s9.id === 9, s9);
   await page.evaluate(() => (window.__cfd.debug.god = true));
   await sleep(6000);
-  await shot('06-sector9.png');
+  shot('06-sector9.png');
 
   const logcat = await sh('logcat -d -s Capacitor/Console:E chromium:E');
   const jsErrors = logcat.split('\n').filter((l) => /Uncaught|TypeError|ReferenceError/.test(l));
@@ -168,6 +171,11 @@ try {
 } catch (e) {
   report.checks.push({ name: 'smoke test crashed', ok: false, detail: String(e && e.stack ? e.stack : e) });
   console.error(e);
+  try {
+    report.logcat = execFileSync('adb', ['-s', device.serial(), 'logcat', '-d', '-t', '150', '*:E']).toString().split('\n').slice(-150);
+  } catch (_) {
+    /* ignore */
+  }
 } finally {
   await sh('settings put system user_rotation 0').catch(() => {});
   report.passed = report.checks.filter((c) => c.ok).length;
