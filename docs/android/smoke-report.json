@@ -49,25 +49,9 @@
       }
     },
     {
-      "name": "auto-fire shooting",
-      "ok": true,
-      "detail": {
-        "x": 200,
-        "shots": 7
-      }
-    },
-    {
-      "name": "real touch drag moves the ship",
-      "ok": true,
-      "detail": {
-        "from": 200,
-        "to": 40
-      }
-    },
-    {
       "name": "smoke test crashed",
       "ok": false,
-      "detail": "page.evaluate: Target page, context or browser has been closed\n    at /home/runner/work/comic-space-shooter/comic-space-shooter/tools/android-smoke.mjs:115:25"
+      "detail": "page.evaluate: Target page, context or browser has been closed\n    at /home/runner/work/comic-space-shooter/comic-space-shooter/tools/android-smoke.mjs:125:14"
     }
   ],
   "errors": [],
@@ -75,10 +59,13 @@
     "model": "sdk_gphone64_x86_64",
     "serial": "emulator-5554"
   },
-  "notes": [
-    "screenshot failed: 01-menu.png",
-    "screenshot failed: 02-gameplay.png"
+  "pageClosed": [
+    {
+      "at": "84.1s",
+      "appProcessAlive": false,
+      "pid": ""
+    }
   ],
-  "passed": 9,
-  "total": 10
+  "passed": 7,
+  "total": 8
 }
