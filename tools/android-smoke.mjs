@@ -16,11 +16,23 @@ const out = 'docs/android';
 fs.mkdirSync(out, { recursive: true });
 const report = { apk, checks: [], errors: [] };
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const t0 = Date.now();
+const stamp = () => ((Date.now() - t0) / 1000).toFixed(1) + 's';
 
 function check(name, ok, detail) {
   report.checks.push({ name, ok: !!ok, detail });
-  console.log(`${ok ? 'PASS' : 'FAIL'}  ${name}${detail !== undefined ? '  ' + JSON.stringify(detail) : ''}`);
+  console.log(`[${stamp()}] ${ok ? 'PASS' : 'FAIL'}  ${name}${detail !== undefined ? '  ' + JSON.stringify(detail) : ''}`);
 }
+
+// hard stop so a hung device call can never eat the whole CI job
+const watchdog = setTimeout(() => {
+  report.checks.push({ name: 'watchdog: smoke test took longer than 10 min', ok: false });
+  report.passed = report.checks.filter((c) => c.ok).length;
+  report.total = report.checks.length;
+  fs.writeFileSync(path.join(out, 'smoke-report.json'), JSON.stringify(report, null, 2));
+  console.log('watchdog fired');
+  process.exit(1);
+}, 10 * 60 * 1000);
 
 const [device] = await android.devices();
 if (!device) throw new Error('no Android device / emulator found');
@@ -33,6 +45,17 @@ async function launch() {
   const webview = await device.webView({ pkg: PKG }, { timeout: 60000 });
   const page = await webview.page();
   page.on('pageerror', (e) => report.errors.push('pageerror: ' + e.message));
+  page.on('close', () => {
+    // was it the app (process gone) or only the DevTools link?
+    let pid = '';
+    try {
+      pid = execFileSync('adb', ['-s', device.serial(), 'shell', 'pidof', PKG], { timeout: 10000 }).toString().trim();
+    } catch (_) {
+      /* not running */
+    }
+    report.pageClosed = (report.pageClosed || []).concat({ at: stamp(), appProcessAlive: !!pid, pid });
+    console.log('page closed at ' + stamp() + ' app process alive: ' + !!pid);
+  });
   page.on('console', (m) => m.type() === 'error' && report.errors.push('console: ' + m.text()));
   await page.waitForFunction(() => window.__cfd && window.__cfd.loop.running, null, { timeout: 60000 });
   return page;
@@ -62,7 +85,7 @@ async function realTap(page, sel) {
 function shot(name) {
   for (let i = 0; i < 3; i++) {
     try {
-      const png = execFileSync('adb', ['-s', device.serial(), 'exec-out', 'screencap', '-p'], { maxBuffer: 64 * 1024 * 1024 });
+      const png = execFileSync('adb', ['-s', device.serial(), 'exec-out', 'screencap', '-p'], { maxBuffer: 64 * 1024 * 1024, timeout: 20000 });
       if (png.length > 1000 && png[0] === 0x89) {
         fs.writeFileSync(path.join(out, name), png);
         return;
@@ -172,7 +195,7 @@ try {
   report.checks.push({ name: 'smoke test crashed', ok: false, detail: String(e && e.stack ? e.stack : e) });
   console.error(e);
   try {
-    report.logcat = execFileSync('adb', ['-s', device.serial(), 'logcat', '-d', '-t', '150', '*:E']).toString().split('\n').slice(-150);
+    report.logcat = execFileSync('adb', ['-s', device.serial(), 'logcat', '-d', '-t', '150', '*:E'], { timeout: 20000 }).toString().split('\n').slice(-150);
   } catch (_) {
     /* ignore */
   }
@@ -182,6 +205,7 @@ try {
   report.total = report.checks.length;
   fs.writeFileSync(path.join(out, 'smoke-report.json'), JSON.stringify(report, null, 2));
   console.log(`\n${report.passed}/${report.total} Android smoke checks passed`);
-  await device.close();
-  process.exitCode = report.passed === report.total ? 0 : 1;
+  clearTimeout(watchdog);
+  await Promise.race([device.close(), sleep(10000)]);
+  process.exit(report.passed === report.total ? 0 : 1);
 }

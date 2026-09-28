@@ -62,7 +62,7 @@ jobs:
   emulator:
     needs: build
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -86,9 +86,11 @@ jobs:
           target: google_apis
           arch: x86_64
           profile: pixel_6
+          cores: 4
+          ram-size: 4096M
           disable-animations: true
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
-          script: node tools/android-smoke.mjs dist/android/CosmicFarmDefenders-debug.apk
+          script: node tools/android-smoke.mjs dist/android/CosmicFarmDefenders-debug.apk; code=$?; adb logcat -d -t 4000 > docs/android/logcat.txt 2>&1; exit $code
       - uses: actions/upload-artifact@v4
         if: always()
         with:
