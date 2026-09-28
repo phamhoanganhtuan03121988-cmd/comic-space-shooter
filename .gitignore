@@ -1,3 +1,6 @@
 node_modules/
 tests/e2e/output/
 .DS_Store
+
+# Capacitor staging copy of dist/index.html
+build/

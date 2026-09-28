@@ -1,0 +1,10 @@
+{
+  "appId": "com.cosmicfarm.defenders",
+  "appName": "Cosmic Farm Defenders",
+  "webDir": "build/android-web",
+  "android": {
+    "backgroundColor": "#0b0620",
+    "allowMixedContent": false,
+    "captureInput": false
+  }
+}

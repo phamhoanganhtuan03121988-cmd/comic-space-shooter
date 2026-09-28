@@ -9,10 +9,16 @@
     "build": "node tools/build.mjs",
     "test": "node --test tests/unit/*.test.mjs",
     "test:e2e": "node tests/e2e/run.mjs",
-    "test:all": "npm test && npm run test:e2e"
+    "test:all": "npm test && npm run test:e2e",
+    "android:web": "npm run build && node tools/build-android-web.mjs",
+    "android:sync": "npm run android:web && npx cap sync android",
+    "android:apk": "npm run android:sync && cd android && ./gradlew assembleDebug"
   },
   "license": "MIT",
   "devDependencies": {
+    "@capacitor/android": "^7.6.9",
+    "@capacitor/cli": "^7.6.9",
+    "@capacitor/core": "^7.6.9",
     "esbuild": "^0.28.2",
     "playwright": "^1.56.1"
   }
