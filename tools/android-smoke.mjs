@@ -1,6 +1,6 @@
 // Android emulator smoke test for the packaged APK (run by CI, see
 // .github/workflows/android.yml). Installs the debug APK, launches it, drives
-// it with REAL touch input through adb (taps, drags) and inspects the game
+// it with REAL touch input through adb (`input tap` / `input swipe`) and inspects the game
 // through the WebView debugger (debug builds only). Writes screenshots and a
 // JSON report to docs/android/.
 //
@@ -51,7 +51,7 @@ async function toScreen(page, sel) {
 
 async function realTap(page, sel) {
   const p = await toScreen(page, sel);
-  await device.input.tap({ x: p.x, y: p.y });
+  await sh(`input tap ${p.x} ${p.y}`);
   await sleep(700);
   return p;
 }
@@ -64,6 +64,8 @@ try {
   // try to force landscape at system level: the app must stay portrait
   await sh('settings put system accelerometer_rotation 0');
   await sh('settings put system user_rotation 1');
+  // Android's one-time "Viewing full screen" hint would cover the first taps
+  await sh('settings put secure immersive_mode_confirmations confirmed');
 
   let page = await launch();
   await sleep(2500);
@@ -89,7 +91,7 @@ try {
   check('auto-fire shooting', before.shots > 0, before);
   const size = (await sh('wm size')).match(/(\d+)x(\d+)/g).pop().split('x').map(Number);
   const cy = Math.round(size[1] * 0.75);
-  await device.input.drag({ x: Math.round(size[0] * 0.5), y: cy }, { x: Math.round(size[0] * 0.15), y: cy }, 25);
+  await sh(`input swipe ${Math.round(size[0] * 0.5)} ${cy} ${Math.round(size[0] * 0.15)} ${cy} 700`);
   await sleep(500);
   const afterMove = await page.evaluate(() => window.__cfd.player.x);
   check('real touch drag moves the ship', Math.abs(afterMove - before.x) > 25, { from: Math.round(before.x), to: Math.round(afterMove) });
