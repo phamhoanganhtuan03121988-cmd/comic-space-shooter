@@ -49,9 +49,49 @@
       }
     },
     {
+      "name": "auto-fire shooting",
+      "ok": true,
+      "detail": {
+        "x": 200,
+        "shots": 7
+      }
+    },
+    {
+      "name": "real touch drag moves the ship",
+      "ok": true,
+      "detail": {
+        "from": 200,
+        "to": 53
+      }
+    },
+    {
+      "name": "real tap: NOVA fires (cooldown started)",
+      "ok": true,
+      "detail": {
+        "cooldown": 21.8,
+        "tap": {
+          "x": 944,
+          "y": 2257,
+          "screen": [
+            1080,
+            2400
+          ],
+          "dpr": 2.625
+        }
+      }
+    },
+    {
+      "name": "sector clear unlocks the next sector",
+      "ok": true,
+      "detail": {
+        "state": "victory",
+        "unlocked": 2
+      }
+    },
+    {
       "name": "smoke test crashed",
       "ok": false,
-      "detail": "page.evaluate: Target page, context or browser has been closed\n    at /home/runner/work/comic-space-shooter/comic-space-shooter/tools/android-smoke.mjs:125:14"
+      "detail": "page.evaluate: Target page, context or browser has been closed\n    at /home/runner/work/comic-space-shooter/comic-space-shooter/tools/android-smoke.mjs:164:31"
     }
   ],
   "errors": [],
@@ -61,11 +101,57 @@
   },
   "pageClosed": [
     {
-      "at": "84.1s",
+      "at": "59.9s",
+      "appProcessAlive": false,
+      "pid": ""
+    },
+    {
+      "at": "69.8s",
       "appProcessAlive": false,
       "pid": ""
     }
   ],
-  "passed": 7,
-  "total": 8
+  "logcat": [
+    "--------- beginning of main",
+    "09-28 02:56:57.455  1574  4209 E DowngradeHelper: isModuleDowngradeRequired false",
+    "09-28 02:56:57.633  1958  2325 E A       : Failed updating experiments for package com.google.android.apps.search.transcription.device#com.google.android.googlequicksearchbox",
+    "09-28 02:56:57.633  1958  2325 E A       : com.google.android.libraries.phenotype.client.a.h: 20: 20: The connection to Google Play services was lost due to service disconnection. Last reason for disconnect: Timing out service connection.",
+    "09-28 02:56:57.633  1958  2325 E A       : \tat com.google.android.libraries.phenotype.client.a.j.apply(PG:1)",
+    "09-28 02:56:57.633  1958  2325 E A       : \tat com.google.common.util.concurrent.a.e(PG:2)",
+    "09-28 02:56:57.633  1958  2325 E A       : \tat com.google.common.util.concurrent.c.run(PG:12)",
+    "09-28 02:56:57.633  1958  2325 E A       : \tat com.google.common.util.concurrent.bf.execute(PG:1)",
+    "09-28 02:56:57.633  1958  2325 E A       : \tat com.google.common.util.concurrent.d.i(PG:1)",
+    "09-28 02:56:57.633  1958  2325 E A       : \tat com.google.common.util.concurrent.d.l(PG:12)",
+    "09-28 02:56:57.633  1958  2325 E A       : \tat com.google.common.util.concurrent.d.o(PG:3)",
+    "09-28 02:56:57.633  1958  2325 E A       : \tat com.google.android.libraries.v.c.a(PG:5)",
+    "09-28 02:56:57.633  1958  2325 E A       : \tat com.google.android.gms.tasks.n.run(PG:1)",
+    "09-28 02:56:57.633  1958  2325 E A       : \tat com.google.common.util.concurrent.bf.execute(PG:1)",
+    "09-28 02:56:57.633  1958  2325 E A       : \tat com.google.android.gms.tasks.o.a(PG:3)",
+    "09-28 02:56:57.633  1958  2325 E A       : \tat com.google.android.gms.tasks.ad.b(PG:5)",
+    "09-28 02:56:57.633  1958  2325 E A       : \tat com.google.android.gms.tasks.aj.s(PG:4)",
+    "09-28 02:56:57.633  1958  2325 E A       : \tat com.google.android.gms.tasks.f.run(PG:5)",
+    "09-28 02:56:57.633  1958  2325 E A       : \tat com.google.common.util.concurrent.bf.execute(PG:1)",
+    "09-28 02:56:57.633  1958  2325 E A       : \tat com.google.android.gms.tasks.g.a(PG:1)",
+    "09-28 02:56:57.633  1958  2325 E A       : \tat com.google.android.gms.tasks.ad.b(PG:5)",
+    "09-28 02:56:57.633  1958  2325 E A       : \tat com.google.android.gms.tasks.aj.u(PG:4)",
+    "09-28 02:56:57.633  1958  2325 E A       : \tat com.google.android.gms.common.api.internal.ad.a(PG:13)",
+    "09-28 02:56:57.633  1958  2325 E A       : \tat com.google.android.gms.common.api.internal.bk.k(PG:7)",
+    "09-28 02:56:57.633  1958  2325 E A       : \tat com.google.android.gms.common.api.internal.bk.lb(PG:2)",
+    "09-28 02:56:57.633  1958  2325 E A       : \tat com.google.android.gms.common.internal.aa.b(PG:1)",
+    "09-28 02:56:57.633  1958  2325 E A       : \tat com.google.android.gms.common.internal.f.handleMessage(PG:27)",
+    "09-28 02:56:57.633  1958  2325 E A       : \tat android.os.Handler.dispatchMessage(Handler.java:106)",
+    "09-28 02:56:57.633  1958  2325 E A       : \tat android.os.Looper.loopOnce(Looper.java:205)",
+    "09-28 02:56:57.633  1958  2325 E A       : \tat android.os.Looper.loop(Looper.java:294)",
+    "09-28 02:56:57.633  1958  2325 E A       : \tat android.os.HandlerThread.run(HandlerThread.java:67)",
+    "09-28 02:56:57.633  1958  2325 E A       : Caused by: com.google.android.gms.common.api.n: 20: The connection to Google Play services was lost due to service disconnection. Last reason for disconnect: Timing out service connection.",
+    "09-28 02:56:57.633  1958  2325 E A       : \tat com.google.android.gms.common.api.internal.ad.a(PG:12)",
+    "09-28 02:56:57.633  1958  2325 E A       : \t... 8 more",
+    "09-28 02:56:57.636   425   425 E BpTransactionCompletedListener: Failed to transact (-32)",
+    "09-28 02:56:57.671  1958  2413 E A       : Failed to commit flags to Phenotype. The connection to Google Play services was lost (8)",
+    "09-28 02:56:57.688  1958  3124 E OpenGLRenderer: Unable to match the desired swap behavior.",
+    "09-28 02:56:57.717  6109  6109 E .gms.persistent: Not starting debugger since process cannot load the jdwp agent.",
+    ""
+  ],
+  "passed": 11,
+  "total": 12
 }
