@@ -56,7 +56,20 @@ async function realTap(page, sel) {
   return p;
 }
 
-const shot = async (name) => fs.writeFileSync(path.join(out, name), await device.screenshot());
+// screencap on the device + pull (more reliable on emulators than the
+// streamed screenshot); a failed capture never fails the run
+async function shot(name) {
+  for (let i = 0; i < 3; i++) {
+    try {
+      await sh('screencap -p /sdcard/smoke.png');
+      await device.pull('/sdcard/smoke.png', path.join(out, name));
+      return;
+    } catch (e) {
+      await sleep(800);
+    }
+  }
+  report.notes = (report.notes || []).concat('screenshot failed: ' + name);
+}
 
 try {
   await device.installApk(fs.readFileSync(apk));
