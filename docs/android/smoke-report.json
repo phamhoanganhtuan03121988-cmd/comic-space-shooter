@@ -33,9 +33,57 @@
       "ok": true
     },
     {
+      "name": "real tap: PLAY opens sector select",
+      "ok": true
+    },
+    {
+      "name": "15 sectors listed",
+      "ok": true
+    },
+    {
+      "name": "real tap: sector 1 starts",
+      "ok": true,
+      "detail": {
+        "state": "playing",
+        "id": 1
+      }
+    },
+    {
+      "name": "auto-fire shooting",
+      "ok": true,
+      "detail": {
+        "x": 200,
+        "shots": 6
+      }
+    },
+    {
+      "name": "real touch drag moves the ship",
+      "ok": true,
+      "detail": {
+        "from": 200,
+        "to": 62
+      }
+    },
+    {
+      "name": "real tap: NOVA fires (cooldown started)",
+      "ok": true,
+      "detail": {
+        "cooldown": 21.9,
+        "tap": {
+          "x": 944,
+          "y": 2257,
+          "screen": [
+            1080,
+            2400
+          ],
+          "dpr": 2.625
+        }
+      }
+    },
+    {
       "name": "smoke test crashed",
       "ok": false,
-      "detail": "androidInput.tap: Please install Android driver apk using 'npx playwright install android'\n    at realTap (/home/runner/work/comic-space-shooter/comic-space-shooter/tools/android-smoke.mjs:54:22)\n    at async file:///home/runner/work/comic-space-shooter/comic-space-shooter/tools/android-smoke.mjs:78:3"
+      "detail": "androidDevice.screenshot: FAIL\n    at shot (/home/runner/work/comic-space-shooter/comic-space-shooter/tools/android-smoke.mjs:59:82)\n    at /home/runner/work/comic-space-shooter/comic-space-shooter/tools/android-smoke.mjs:105:9"
     }
   ],
   "errors": [],
@@ -43,6 +91,6 @@
     "model": "sdk_gphone64_x86_64",
     "serial": "emulator-5554"
   },
-  "passed": 4,
-  "total": 5
+  "passed": 10,
+  "total": 11
 }
