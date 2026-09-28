@@ -108,6 +108,25 @@ npm install          # chỉ cần cho build/test
 npm run build
 ```
 
+## Android (APK)
+
+Bản Android là **Capacitor 7** bọc đúng file `dist/index.html` của bản web (không sửa code game, chạy offline hoàn toàn).
+
+- App name: **Cosmic Farm Defenders** · package ID: `com.cosmicfarm.defenders` · khoá **portrait**.
+- `android/`: project Android do Capacitor tạo. `MainActivity` chỉ cấu hình cửa sổ: full screen immersive (ẩn status/navigation bar, vuốt từ mép để hiện tạm), chừa vùng tai thỏ/camera, tắt long-press menu, overscroll, zoom và cỡ chữ hệ thống trong WebView.
+- Save dùng `localStorage` của WebView (origin `https://localhost`), vẫn giữ khi tắt/mở lại app.
+- Icon/splash sinh từ `icon.svg`: `node tools/android-assets.mjs`.
+
+Build (cần Android SDK + JDK 21):
+
+```bash
+npm run android:sync          # build web + copy vào android/
+cd android && ./gradlew assembleDebug
+# APK: android/app/build/outputs/apk/debug/app-debug.apk
+```
+
+CI (`.github/workflows/android.yml`) tự build khi đẩy code, chạy smoke test trên Android emulator bằng thao tác chạm thật qua adb (`tools/android-smoke.mjs`) rồi commit APK vào `dist/android/CosmicFarmDefenders-debug.apk` và ảnh chụp/kết quả vào `docs/android/`.
+
 ## How to test
 
 ```bash
